@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Soma Wellness Pilates — Sistema de Gestión v4</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+
+<!-- Firebase SDK (compat version - no build tools needed) -->
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+<style>
+:root{--sage:#7a9e7a;--sage-l:#b5c7b5;--sage-d:#4d7a4d;--cream:#f5f0e8;--warm:#faf8f4;--char:#2c2c2c;--clay:#b07d5a;--muted:#7a7a7a;--border:#e0d8cc;--ok:#5d9e5d;--warn:#c4962a;--err:#c46a5a;--sw:256px;--cr:14px;--sh:0 4px 24px rgba(44,44,44,.07);--shh:0 8px 32px rgba(44,44,44,.13)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'DM Sans',sans-serif;background:var(--cream);color:var(--char);min-height:100vh;display:flex}
+
+/* LOADING */
+.loading-screen{position:fixed;inset:0;background:var(--char);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;transition:opacity .4s}
+.loading-screen.hide{opacity:0;pointer-events:none}
+.ls-logo{font-family:'Cormorant Garamond',serif;font-size:32px;font-weight:300;color:var(--cream);margin-bottom:8px}
+.ls-logo span{color:var(--sage-l);font-style:italic}
+.ls-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:32px}
+.spinner{width:36px;height:36px;border:2px solid rgba(255,255,255,.1);border-top-color:var(--sage-l);border-radius:50%;animation:spin .8s linear infinite}
+.ls-status{font-size:11px;color:rgba(255,255,255,.3);margin-top:14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* SYNC INDICATOR */
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--sage);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.sync-err{background:var(--err);animation:none}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;background:var(--char);display:flex;align-items:center;justify-content:center;z-index:998}
+.login-card{background:var(--warm);border-radius:24px;padding:48px 44px;width:400px;box-shadow:0 32px 80px rgba(0,0,0,.3)}
+.login-logo{font-family:'Cormorant Garamond',serif;font-size:28px;font-weight:300;text-align:center;margin-bottom:4px}
+.login-logo span{font-style:italic;color:var(--sage)}
+.login-sub{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:32px}
+.ll{font-size:11.5px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px}
+.li{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13.5px;background:var(--cream);outline:none;transition:border-color .2s;margin-bottom:14px}
+.li:focus{border-color:var(--sage)}
+.lb{width:100%;padding:12px;background:var(--sage-d);color:#fff;border:none;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .2s;margin-top:4px}
+.lb:hover{background:var(--sage)}
+.uc{display:flex;align-items:center;gap:8px;padding:8px 12px;border:1.5px solid var(--border);border-radius:8px;cursor:pointer;transition:all .2s;margin-bottom:6px}
+.uc:hover{border-color:var(--sage)}
+.lu{margin-top:22px;padding-top:18px;border-top:1px solid var(--border)}
+.lu-hint{font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px}
+
+/* SIDEBAR */
+.sidebar{width:var(--sw);background:var(--char);min-height:100vh;position:fixed;left:0;top:0;display:flex;flex-direction:column;z-index:100}
+.sb-logo{padding:26px 22px 20px;border-bottom:1px solid rgba(255,255,255,.08)}
+.brand{font-family:'Cormorant Garamond',serif;font-size:18px;font-weight:300;color:var(--cream);line-height:1.3}
+.brand span{color:var(--sage-l);font-style:italic}
+.brand-tag{font-size:9px;color:rgba(255,255,255,.28);letter-spacing:2px;text-transform:uppercase;margin-top:3px}
+.up{margin:12px 14px 0;background:rgba(255,255,255,.06);border-radius:10px;padding:9px 11px;display:flex;align-items:center;gap:8px}
+.up-av{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;flex-shrink:0}
+.up-name{font-size:12px;color:var(--cream);font-weight:500}
+.up-role{font-size:9.5px;color:rgba(255,255,255,.38);margin-top:1px}
+.up-out{margin-left:auto;font-size:10px;color:rgba(255,255,255,.28);cursor:pointer;padding:3px 6px;border-radius:4px;border:1px solid rgba(255,255,255,.1)}
+.up-out:hover{color:var(--cream);border-color:rgba(255,255,255,.3)}
+.sede-sel{margin:10px 14px 0}
+.sede-sel select{width:100%;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:var(--cream);border-radius:8px;padding:8px 11px;font-family:'DM Sans',sans-serif;font-size:12px;outline:none;cursor:pointer}
+.sede-sel select option{background:var(--char)}
+nav{padding:12px 0;flex:1;overflow-y:auto}
+.nav-sec{padding:7px 16px 3px;font-size:9px;letter-spacing:2.5px;text-transform:uppercase;color:rgba(255,255,255,.2);margin-top:6px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:9px 18px;cursor:pointer;color:rgba(255,255,255,.48);font-size:12.5px;transition:all .2s;border-left:2px solid transparent;margin:1px 0}
+.nav-item:hover{color:var(--cream);background:rgba(255,255,255,.04)}
+.nav-item.active{color:var(--sage-l);border-left-color:var(--sage-l);background:rgba(122,158,122,.1)}
+.nav-ico{font-size:14px;width:17px;text-align:center}
+.nav-badge{margin-left:auto;background:var(--err);color:#fff;font-size:9.5px;padding:2px 6px;border-radius:10px;font-weight:500}
+.sb-foot{padding:14px 18px;border-top:1px solid rgba(255,255,255,.07);font-size:10px;color:rgba(255,255,255,.18)}
+
+/* MAIN */
+.main{margin-left:var(--sw);flex:1;display:flex;flex-direction:column;min-height:100vh}
+.topbar{background:var(--warm);border-bottom:1px solid var(--border);padding:0 26px;height:60px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50}
+.tb-left{display:flex;align-items:center;gap:14px}
+.tb-title{font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400}
+.sede-badge{padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500}
+.sede-amarras{background:rgba(122,140,122,.15);color:#4d7a4d}
+.sede-centro{background:rgba(176,125,90,.15);color:#7a4d2a}
+.sede-faro{background:rgba(122,122,170,.15);color:#4a4a9a}
+.sede-todas{background:rgba(122,122,122,.12);color:var(--muted)}
+.tb-right{display:flex;align-items:center;gap:9px}
+.chip{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;background:var(--cream);border:1px solid var(--border);border-radius:20px;font-size:11px;color:var(--muted)}
+.content{padding:26px 30px;flex:1}
+.view{display:none}
+.view.active{display:block;animation:fadeIn .22s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:500;font-family:'DM Sans',sans-serif;cursor:pointer;border:none;transition:all .2s}
+.btn-p{background:var(--sage-d);color:#fff}.btn-p:hover{background:var(--sage);transform:translateY(-1px)}
+.btn-o{background:transparent;border:1.5px solid var(--border);color:var(--char)}.btn-o:hover{border-color:var(--sage);color:var(--sage-d)}
+.btn-g{background:transparent;color:var(--muted);padding:7px 10px}.btn-g:hover{background:var(--cream);color:var(--char)}
+.btn-sm{padding:5px 11px;font-size:11.5px}
+.btn-firebase{background:linear-gradient(135deg,#f5820d,#dd2c00);color:#fff}.btn-firebase:hover{opacity:.9}
+
+/* CARDS */
+.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.sc{background:var(--warm);border-radius:var(--cr);padding:20px 22px;box-shadow:var(--sh);position:relative;overflow:hidden;transition:transform .2s}
+.sc:hover{transform:translateY(-2px)}
+.sc::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.sc-g::before{background:var(--sage)}.sc-c::before{background:var(--clay)}.sc-b::before{background:#c49080}.sc-w::before{background:var(--warn)}
+.sl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.sv{font-family:'Cormorant Garamond',serif;font-size:36px;font-weight:300;line-height:1;margin-bottom:5px}
+.ss{font-size:11px;color:var(--muted)}
+.card{background:var(--warm);border-radius:var(--cr);padding:24px 26px;box-shadow:var(--sh)}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ct{font-family:'Cormorant Garamond',serif;font-size:17px;font-weight:400}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+
+/* TABLE */
+.tw{background:var(--warm);border-radius:var(--cr);box-shadow:var(--sh);overflow:hidden}
+.ttb{padding:16px 20px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap}
+.srch{display:flex;align-items:center;gap:7px;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;padding:7px 12px;min-width:200px;transition:border-color .2s}
+.srch:focus-within{border-color:var(--sage)}
+.srch input{border:none;background:transparent;font-family:'DM Sans',sans-serif;font-size:12.5px;color:var(--char);outline:none;width:100%}
+.srch input::placeholder{color:var(--muted)}
+.fsel{padding:7px 11px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:11.5px;background:var(--cream);color:var(--char);outline:none;cursor:pointer}
+.fsel:focus{border-color:var(--sage)}
+table{width:100%;border-collapse:collapse}
+thead th{padding:10px 16px;text-align:left;font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);background:var(--cream);font-weight:500;border-bottom:1px solid var(--border)}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:rgba(122,158,122,.04)}
+tbody td{padding:12px 16px;font-size:12.5px;color:var(--char);vertical-align:middle}
+.av{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.sc2{display:flex;align-items:center;gap:9px}
+.sn{font-weight:500;font-size:13px}
+.se{font-size:11px;color:var(--muted);margin-top:1px}
+.badge{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:500}
+.b-ok{background:rgba(93,158,93,.13);color:var(--ok)}.b-warn{background:rgba(196,150,42,.13);color:var(--warn)}.b-err{background:rgba(196,106,90,.13);color:var(--err)}.b-neu{background:rgba(122,122,122,.1);color:var(--muted)}.b-blue{background:rgba(122,140,170,.13);color:#5a7aaa}
+.pgr{display:flex;align-items:center;justify-content:space-between;padding:11px 20px;border-top:1px solid var(--border);background:var(--cream)}
+.pgr-i{font-size:11px;color:var(--muted)}
+.pgr-b{display:flex;gap:4px}
+.pb2{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--border);background:transparent;font-size:12px;color:var(--muted);transition:all .15s;font-family:'DM Sans',sans-serif}
+.pb2:hover,.pb2.act{background:var(--sage-d);color:#fff;border-color:var(--sage-d)}
+.ibt{width:27px;height:27px;border-radius:6px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:none;background:transparent;color:var(--muted);font-size:13px;transition:all .15s}
+.ibt:hover{background:var(--cream);color:var(--char)}
+.ibt.ed:hover{color:var(--sage-d)}
+.ibt.dl:hover{color:var(--err);background:rgba(196,106,90,.07)}
+.tact{display:flex;gap:4px;align-items:center}
+
+/* MODAL */
+.ov{position:fixed;inset:0;background:rgba(44,44,44,.45);backdrop-filter:blur(4px);z-index:200;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+.ov.open{opacity:1;pointer-events:all}
+.modal{background:var(--warm);border-radius:20px;width:640px;max-width:96vw;max-height:92vh;overflow-y:auto;box-shadow:0 24px 80px rgba(44,44,44,.2);transform:translateY(20px) scale(.98);transition:transform .25s;padding:32px}
+.ov.open .modal{transform:translateY(0) scale(1)}
+.mhd{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px}
+.mt{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:400}
+.ms{font-size:12px;color:var(--muted);margin-top:2px}
+.cbtn{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:1.5px solid var(--border);background:transparent;font-size:14px;color:var(--muted);transition:all .15s}
+.cbtn:hover{background:var(--cream);color:var(--char)}
+.fsec{margin-bottom:20px}
+.fst{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--sage-d);margin-bottom:11px;padding-bottom:7px;border-bottom:1px solid var(--border)}
+.fg{display:grid;grid-template-columns:1fr 1fr;gap:11px}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg1{grid-template-columns:1fr}
+.fgrp{display:flex;flex-direction:column;gap:4px}
+.fgrp.full{grid-column:1/-1}
+label{font-size:10.5px;font-weight:500;color:var(--muted);letter-spacing:.3px}
+input,select,textarea{font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;border:1.5px solid var(--border);border-radius:7px;background:var(--cream);color:var(--char);outline:none;transition:border-color .2s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(122,158,122,.1);background:#fff}
+textarea{resize:vertical;min-height:68px}
+.mft{display:flex;justify-content:flex-end;gap:9px;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* SCHEDULE */
+.sch-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;margin-bottom:22px}
+.sch-day{background:var(--warm);border-radius:12px;padding:14px 12px;box-shadow:var(--sh)}
+.sd-name{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;text-align:center}
+.sd-slot{padding:7px 8px;border-radius:6px;margin-bottom:5px;cursor:pointer;transition:all .15s;border-left:3px solid var(--sage);background:rgba(122,158,122,.06)}
+.sd-slot:hover{transform:translateX(2px)}
+.sd-slot.full{border-left-color:var(--err);background:rgba(196,106,90,.05)}
+.sd-time{font-size:11.5px;font-weight:500}
+.sd-cnt{font-size:10px;color:var(--muted);margin-top:1px}
+
+/* ATTENDANCE */
+.wk-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:9px;margin-bottom:22px}
+.wk-day{background:var(--warm);border-radius:10px;padding:13px 9px;text-align:center;box-shadow:var(--sh);transition:all .2s}
+.wk-day.today{border:2px solid var(--sage)}
+.wkdn{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.wknum{font-family:'Cormorant Garamond',serif;font-size:24px;font-weight:300}
+.wkcnt{font-size:10.5px;color:var(--sage-d);margin-top:3px;font-weight:500}
+
+/* DETAIL PANEL */
+.dp{position:fixed;right:0;top:0;bottom:0;width:360px;background:var(--warm);box-shadow:-8px 0 40px rgba(44,44,44,.1);z-index:150;padding:26px;overflow-y:auto;transform:translateX(100%);transition:transform .3s cubic-bezier(.4,0,.2,1)}
+.dp.open{transform:translateX(0)}
+.dp-av{width:64px;height:64px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;margin:0 auto 12px;font-family:'Cormorant Garamond',serif}
+.dp-name{font-family:'Cormorant Garamond',serif;font-size:22px;font-weight:400;text-align:center;margin-bottom:3px}
+.dp-sub{text-align:center;font-size:11.5px;color:var(--muted);margin-bottom:14px}
+.dp-sec{margin-bottom:16px}
+.dp-st{font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--sage-d);margin-bottom:8px}
+.dp-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px}
+.dp-row:last-child{border-bottom:none}
+.dp-k{color:var(--muted)}
+.dp-v{font-weight:500;text-align:right;max-width:190px;font-size:12px}
+.divr{height:1px;background:var(--border);margin:14px 0}
+
+/* REPORTS */
+.rg{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+.rc{background:var(--warm);border-radius:var(--cr);padding:20px;box-shadow:var(--sh);cursor:pointer;transition:all .2s;border:1.5px solid transparent}
+.rc:hover{border-color:var(--sage-l);transform:translateY(-2px)}
+.ri{font-size:28px;margin-bottom:11px}
+.rn{font-family:'Cormorant Garamond',serif;font-size:15px;font-weight:400;margin-bottom:4px}
+.rd{font-size:11px;color:var(--muted);line-height:1.5}
+
+/* MISC */
+.bch{display:flex;align-items:flex-end;gap:6px;height:88px;margin-top:7px}
+.bw{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{width:100%;border-radius:4px 4px 0 0;background:var(--sage-l);min-height:3px;transition:height .6s cubic-bezier(.4,0,.2,1)}
+.bar:hover{background:var(--sage-d)}
+.bl{font-size:9px;color:var(--muted)}
+.pb-w{background:var(--border);border-radius:4px;height:5px;overflow:hidden;margin-top:4px}
+.pb-f{height:100%;border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--char);color:var(--cream);padding:12px 18px;border-radius:10px;font-size:12.5px;display:flex;align-items:center;gap:8px;box-shadow:0 8px 32px rgba(44,44,44,.2);transform:translateY(20px);opacity:0;transition:all .3s;z-index:300;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+.alert{display:flex;align-items:flex-start;gap:9px;padding:11px 14px;border-radius:8px;font-size:12px;margin-bottom:14px}
+.al-warn{background:rgba(196,150,42,.1);border-left:3px solid var(--warn);color:#7a5e1a}
+.al-blue{background:rgba(26,115,232,.1);border-left:3px solid #1a73e8;color:#1a3e6e}
+.al-ok{background:rgba(93,158,93,.1);border-left:3px solid var(--ok);color:#2a5e2a}
+.cred-pill{display:inline-flex;align-items:center;gap:4px;background:rgba(122,158,122,.12);color:var(--sage-d);border-radius:20px;padding:2px 9px;font-size:11px;font-weight:500}
+
+/* FIREBASE SETUP BANNER */
+.fb-setup{background:linear-gradient(135deg,#1557a0,#0d3b6e);color:#fff;border-radius:14px;padding:20px 24px;margin-bottom:24px;display:flex;align-items:center;gap:16px}
+.fb-setup-ico{font-size:32px;flex-shrink:0}
+.fb-setup-title{font-size:14px;font-weight:500;margin-bottom:4px}
+.fb-setup-sub{font-size:12px;opacity:.75;line-height:1.5}
+.fb-progress{margin-top:10px;font-size:11px;opacity:.7}
+
+/* ROLES */
+.role-admin .ao{display:flex!important}.role-instructor .ao{display:none!important}
+
+::-webkit-scrollbar{width:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- LOADING SCREEN -->
+<div class="loading-screen" id="loading-screen">
+  <div class="ls-logo">Soma <span>Wellness</span> Pilates</div>
+  <div class="ls-sub">Conectando con Firebase…</div>
+  <div class="spinner"></div>
+  <div class="ls-status" id="ls-status">Inicializando base de datos…</div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="login-screen" style="display:none;">
+  <div class="login-card">
+    <div class="login-logo">Soma <span>Wellness</span> Pilates</div>
+    <div class="login-sub">Sistema de Gestión · Acceso seguro</div>
+    <label class="ll">Usuario</label>
+    <input class="li" id="li-u" type="text" value="admin@somawellness.com">
+    <label class="ll">Contraseña</label>
+    <input class="li" id="li-p" type="password" value="soma2025">
+    <div id="li-err" style="font-size:11.5px;color:var(--err);margin-bottom:8px;display:none;">Usuario o contraseña incorrectos.</div>
+    <button class="lb" onclick="doLogin()">Ingresar al sistema</button>
+    <div class="lu">
+      <div class="lu-hint">Clic para autocompletar:</div>
+      <div class="uc" onclick="fillL('admin@somawellness.com','soma2025')">
+        <div class="av" style="background:rgba(77,122,77,.15);color:var(--sage-d);width:28px;height:28px;font-size:11px;">JA</div>
+        <div><div style="font-size:12px;font-weight:500;">Julián — Administrador</div><div style="font-size:10px;color:var(--muted);">Acceso total · 3 sedes</div></div>
+        <span class="badge b-ok" style="margin-left:auto;">Admin</span>
+      </div>
+      <div class="uc" onclick="fillL('inst@somawellness.com','inst2025')">
+        <div class="av" style="background:rgba(176,125,90,.15);color:var(--clay);width:28px;height:28px;font-size:11px;">IN</div>
+        <div><div style="font-size:12px;font-weight:500;">Instructora</div><div style="font-size:10px;color:var(--muted);">Sin acceso a pagos</div></div>
+        <span class="badge b-warn" style="margin-left:auto;">Instructora</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SIDEBAR -->
+<aside class="sidebar" id="sidebar">
+  <div class="sb-logo">
+    <div class="brand">Soma <span>Wellness</span><br>Pilates</div>
+    <div class="brand-tag">v4 · Firebase Sync</div>
+  </div>
+  <div class="up">
+    <div class="up-av" id="up-av"></div>
+    <div><div class="up-name" id="up-name"></div><div class="up-role" id="up-role"></div></div>
+    <div class="up-out" onclick="logout()">Salir</div>
+  </div>
+  <div class="sede-sel">
+    <select id="sede-select" onchange="changeSede(this.value)">
+      <option value="todas">🏢 Todas las sedes</option>
+      <option value="Amarras">📍 Amarras</option>
+      <option value="Centro">📍 Centro</option>
+      <option value="Faro">📍 Faro</option>
+    </select>
+  </div>
+  <nav>
+    <div class="nav-sec">Principal</div>
+    <div class="nav-item active" onclick="showView('dashboard')"><span class="nav-ico">◈</span> Dashboard</div>
+    <div class="nav-item" onclick="showView('estudiantes')"><span class="nav-ico">◉</span> Clientes</div>
+    <div class="nav-item" onclick="showView('horarios')"><span class="nav-ico">◫</span> Horarios</div>
+    <div class="nav-item" onclick="showView('asistencia')"><span class="nav-ico">✦</span> Asistencia</div>
+    <div class="nav-sec ao">Administración</div>
+    <div class="nav-item ao" onclick="showView('pagos')"><span class="nav-ico">◈</span> Pagos <span class="nav-badge" id="pend-badge" style="display:none;"></span></div>
+    <div class="nav-item" onclick="showView('salud')"><span class="nav-ico">♡</span> Salud</div>
+    <div class="nav-item ao" onclick="showView('reportes')"><span class="nav-ico">◧</span> Reportes</div>
+  </nav>
+  <div class="sb-foot">
+    <div><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Conectado · Firebase</span></div>
+    <div style="margin-top:4px;color:rgba(255,255,255,.12);" id="sb-count">Cargando…</div>
+  </div>
+</aside>
+
+<!-- MAIN APP -->
+<div class="main" id="main-app">
+  <div class="topbar">
+    <div class="tb-left">
+      <div class="tb-title" id="tb-title">Dashboard</div>
+      <div class="sede-badge sede-todas badge" id="sede-badge">Todas las sedes</div>
+    </div>
+    <div class="tb-right">
+      <div class="chip">🗓 <span id="today-date"></span></div>
+      <div class="chip ao"><span class="sync-dot" id="sync-dot2"></span><span id="sync-label2">Sync</span></div>
+      <button class="btn btn-p ao" onclick="openModal('new')">+ Nuevo cliente</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view active">
+      <div id="setup-banner"></div>
+      <div id="dash-sg" class="sg"></div>
+      <div class="dg" style="margin-bottom:20px;">
+        <div class="card">
+          <div class="ch"><div class="ct">Asistencia — últimas 4 semanas</div></div>
+          <div class="bch" id="bar-ch"></div>
+        </div>
+        <div class="card">
+          <div class="ch"><div class="ct">Clientes recientes</div><button class="btn btn-g btn-sm" onclick="showView('estudiantes')">Ver todos →</button></div>
+          <div id="recent-list"></div>
+        </div>
+      </div>
+      <div class="card ao" style="margin-bottom:18px;">
+        <div class="ch"><div class="ct">Distribución por sede</div></div>
+        <div id="sede-breakdown"></div>
+      </div>
+      <div id="dash-alerts"></div>
+    </div>
+
+    <!-- CLIENTES -->
+    <div id="view-estudiantes" class="view">
+      <div class="tw">
+        <div class="ttb">
+          <div class="srch"><span>🔍</span><input type="text" placeholder="Nombre, DNI, email, horario…" oninput="filterStudents()" id="srch-inp"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="fsel" onchange="filterStudents()" id="filt-ep"><option value="">Todo — estado pago</option><option>Al día</option><option>Pendiente</option><option>Vencido</option></select>
+            <select class="fsel" onchange="filterStudents()" id="filt-plan"><option value="">Todo — plan</option><option>1 DIA</option><option>2 DIAS</option><option>3 DIAS</option><option>CLASE DE PRUEBA</option><option>Clases sueltas</option></select>
+            <button class="btn btn-p ao" onclick="openModal('new')">+ Nuevo</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Cliente</th><th>DNI</th><th>Teléfono</th><th>Sede</th><th>Plan / Horarios</th><th>Créd.</th><th class="ao">Método</th><th class="ao">Estado</th><th>Acc.</th></tr></thead>
+            <tbody id="stb"></tbody>
+          </table>
+        </div>
+        <div class="pgr"><div class="pgr-i" id="pgri"></div><div class="pgr-b" id="pgrb"></div></div>
+      </div>
+    </div>
+
+    <!-- HORARIOS -->
+    <div id="view-horarios" class="view">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+        <div>
+          <h2 style="font-family:'Cormorant Garamond',serif;font-size:21px;font-weight:400;">Horarios — Pilates Reformer</h2>
+          <p style="font-size:12px;color:var(--muted);margin-top:2px;">Lun–Vie: 6:00 a 20:00 · Sábados: 8:00 a 11:00</p>
+        </div>
+      </div>
+      <div id="sch-content"></div>
+    </div>
+
+    <!-- ASISTENCIA -->
+    <div id="view-asistencia" class="view">
+      <div class="wk-grid" id="wk-grid"></div>
+      <div class="tw">
+        <div class="ttb">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:17px;">Registro semanal</div>
+          <div style="display:flex;gap:8px;">
+            <select class="fsel" onchange="renderAttendance()" id="att-sede"><option value="">Todas las sedes</option><option>Amarras</option><option>Centro</option><option>Faro</option></select>
+            <button class="btn btn-p btn-sm" onclick="confirmToday()">✓ Confirmar hoy</button>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead><tr><th>Cliente</th><th>Sede</th><th>Plan</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th><th>Total</th><th>Cumpl.</th></tr></thead>
+            <tbody id="att-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGOS -->
+    <div id="view-pagos" class="view">
+      <div class="sg" style="grid-template-columns:repeat(3,1fr);" id="pay-sg"></div>
+      <div class="tw">
+        <div class="ttb">
+          <div class="srch"><span>🔍</span><input type="text" placeholder="Buscar…" oninput="filterPayments(this.value)"></div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <select class="fsel" onchange="filterPaymentStatus(this.value)"><option value="">Todo — estado</option><option>Al día</option><option>Pendiente</option><option>Vencido</option></select>
+            <select class="fsel" onchange="filterPaymentMethod(this.value)"><option value="">Todo — método</option><option>Efectivo</option><option>Transferencia</option><option>Tarjeta crédito</option><option>Tarjeta débito</option><option>Mercado Pago</option><option>Débito automático</option><option>Sin especificar</option></select>
+          </div>
+        </div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Sede</th><th>Plan</th><th>Método</th><th>Monto</th><th>Créditos</th><th>Estado</th><th>Acción</th></tr></thead>
+          <tbody id="pay-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SALUD -->
+    <div id="view-salud" class="view">
+      <div class="alert al-warn" style="margin-bottom:18px;">⚠ Información confidencial — solo personal autorizado de Soma Wellness Pilates.</div>
+      <div class="tw">
+        <div class="ttb">
+          <div style="font-family:'Cormorant Garamond',serif;font-size:17px;">Fichas de Salud</div>
+          <div class="srch"><span>🔍</span><input type="text" placeholder="Buscar…" oninput="filterHealth(this.value)"></div>
+        </div>
+        <table>
+          <thead><tr><th>Cliente</th><th>Sede</th><th>Horarios</th><th>Lesiones / Notas</th><th>Restricciones</th><th>Médico</th><th>Edit.</th></tr></thead>
+          <tbody id="health-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- REPORTES -->
+    <div id="view-reportes" class="view">
+      <div class="rg">
+        <div class="rc" onclick="genReport('asistencia')"><div class="ri">📊</div><div class="rn">Asistencia mensual</div><div class="rd">Sesiones por cliente, cumplimiento y frecuencia.</div></div>
+        <div class="rc" onclick="genReport('pagos')"><div class="ri">💰</div><div class="rn">Estado de pagos</div><div class="rd">Cobrado, pendiente y vencido por sede.</div></div>
+        <div class="rc" onclick="genReport('salud')"><div class="ri">🏥</div><div class="rn">Fichas de salud</div><div class="rd">Condiciones y restricciones por sede.</div></div>
+        <div class="rc" onclick="genReport('sedes')"><div class="ri">🏢</div><div class="rn">Resumen por sede</div><div class="rd">Comparativo Amarras · Centro · Faro.</div></div>
+        <div class="rc" onclick="genReport('horarios')"><div class="ri">🗓</div><div class="rn">Ocupación de horarios</div><div class="rd">Clientes asignados por franja horaria.</div></div>
+        <div class="rc" onclick="genReport('pendientes')"><div class="ri">⚠</div><div class="rn">Cobros pendientes</div><div class="rd">Clientes con pago pendiente/vencido y contacto.</div></div>
+      </div>
+      <div id="rep-out" class="card" style="display:none;"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="ov" id="modal-ov" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="mhd">
+      <div><div class="mt" id="m-title">Nuevo Cliente</div><div class="ms" id="m-sub">Complete los datos</div></div>
+      <button class="cbtn" onclick="closeModalD()">✕</button>
+    </div>
+    <form id="sf" onsubmit="saveStudent(event)">
+      <input type="hidden" id="f-id">
+      <div class="fsec">
+        <div class="fst">👤 Información Personal</div>
+        <div class="fg">
+          <div class="fgrp"><label>Nombre *</label><input id="f-nom" required placeholder="María"></div>
+          <div class="fgrp"><label>Apellido *</label><input id="f-ape" required placeholder="González"></div>
+          <div class="fgrp"><label>DNI</label><input id="f-dni" placeholder="28.456.789"></div>
+          <div class="fgrp"><label>Teléfono</label><input id="f-tel" placeholder="+54 342 000-0000"></div>
+          <div class="fgrp full"><label>Email</label><input id="f-mail" type="email" placeholder="cliente@email.com"></div>
+        </div>
+      </div>
+      <div class="fsec">
+        <div class="fst">📍 Sede y Plan</div>
+        <div class="fg fg3">
+          <div class="fgrp"><label>Sede *</label><select id="f-sede"><option>Amarras</option><option>Centro</option><option>Faro</option></select></div>
+          <div class="fgrp"><label>Plan</label><select id="f-plan"><option>1 DIA</option><option>2 DIAS</option><option>3 DIAS</option><option>CLASE DE PRUEBA</option><option>Clases sueltas</option></select></div>
+          <div class="fgrp"><label>Créditos</label><input id="f-cred" type="number" placeholder="8" min="0"></div>
+          <div class="fgrp"><label>Fecha de alta</label><input id="f-ini" type="date"></div>
+          <div class="fgrp full"><label>Horarios (Ej: Lunes 8hs / Miércoles 8hs)</label><input id="f-hor" placeholder="Lunes 8hs / Miércoles 8hs"></div>
+        </div>
+      </div>
+      <div class="fsec ao">
+        <div class="fst">💳 Pago</div>
+        <div class="fg fg3">
+          <div class="fgrp"><label>Método</label><select id="f-met" onchange="toggleCBU(this.value)"><option>Efectivo</option><option>Transferencia</option><option>Tarjeta crédito</option><option>Tarjeta débito</option><option>Mercado Pago</option><option>Débito automático</option><option>Sin especificar</option></select></div>
+          <div class="fgrp"><label>Monto mensual ($)</label><input id="f-monto" type="number" placeholder="0" min="0"></div>
+          <div class="fgrp"><label>Estado</label><select id="f-ep"><option>Al día</option><option>Pendiente</option><option>Vencido</option></select></div>
+          <div class="fgrp" id="cbu-wrap" style="display:none;"><label>CBU / Alias</label><input id="f-cbu" placeholder="CBU o alias"></div>
+        </div>
+      </div>
+      <div class="fsec">
+        <div class="fst">🏥 Salud</div>
+        <div class="fg fg1">
+          <div class="fgrp"><label>Lesiones / condiciones / notas</label><textarea id="f-les" placeholder="Ej: Hernia lumbar, operación de rodilla, hipertensa…"></textarea></div>
+          <div class="fgrp"><label>Restricciones para Pilates</label><textarea id="f-res" placeholder="Ej: Evitar flexión profunda de columna…" style="min-height:52px;"></textarea></div>
+          <div class="fgrp"><label>Médico / Kinesiólogo</label><input id="f-med" placeholder="Dr. García — Tel: 342 000-0000"></div>
+        </div>
+      </div>
+      <div class="mft">
+        <button type="button" class="btn btn-o" onclick="closeModalD()">Cancelar</button>
+        <button type="submit" class="btn btn-p" id="sbtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="dp" id="dp">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+    <div style="font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">FICHA CLIENTE</div>
+    <button class="cbtn" onclick="closeDetail()">✕</button>
+  </div>
+  <div id="dp-content"></div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════
+// FIREBASE CONFIG
+// ═══════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
+  authDomain: "soma-wellness-8c891.firebaseapp.com",
+  projectId: "soma-wellness-8c891",
+  storageBucket: "soma-wellness-8c891.firebasestorage.app",
+  messagingSenderId: "544070415698",
+  appId: "1:544070415698:web:30506522898f020dbbf68b",
+  measurementId: "G-MXPKX2X4FN"
+};
+
+// ═══════════════════════════════════════════
+// DATOS INICIALES (se cargan UNA SOLA VEZ si Firestore está vacío)
+// ═══════════════════════════════════════════
+const INITIAL_STUDENTS = [
+  {nombre:"Nestor",apellido:"Bermudez",dni:"21691018",telefono:"3426125053",email:"nestun2002@yahoo.com.ar",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"Desgarro de isquiotibial derecho",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Viviana",apellido:"Cirigliani",dni:"22067673",telefono:"3424212787",email:"nestun2002@yahoo.com.ar",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Lucila",apellido:"Donati",dni:"31813370",telefono:"3425018952",email:"ma.luciladonati@gmail.com",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Tarjeta débito",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 19hs / Martes 19hs / Jueves 19hs",lesiones:"Contromalasia rotuliana en ambas rodillas y dolor de espalda torácica",restricciones:"Evitar impacto en rodillas",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Veronica",apellido:"Del Favero",dni:"34714164",telefono:"3425176575",email:"draveronicadelfavero@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Adrian",apellido:"Beker",dni:"29401498",telefono:"3425176575",email:"",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"Operación de hombro",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Ana del Carmen",apellido:"Lugones",dni:"14574413",telefono:"3424724030",email:"lugonestata@hotmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:0,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Monica",apellido:"Lugones",dni:"13116059",telefono:"3426316675",email:"monilugones@hotmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:0,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"Enfermedad con los ganglios linfáticos brazo derecho",restricciones:"Cuidado con el brazo derecho",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Julieta",apellido:"Bussi",dni:"28925954",telefono:"3425684996",email:"bussijulieta@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Jueves 19hs / Sábado 9hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Pamela",apellido:"Salas",dni:"29348004",telefono:"3424634503",email:"dra.salas.oftalmopediatria@gmail.com",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 7hs / Jueves 7hs / Sábado 9hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Valentina",apellido:"Alesso",dni:"",telefono:"",email:"",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Lunes 6hs / Miércoles 6hs / Viernes 6hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Franchesca",apellido:"Disicco",dni:"",telefono:"",email:"",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-26",creditos:8,metodo:"Efectivo",monto:0,ep:"Al día",cbu:"",horarios:"Martes 14hs / Jueves 14hs",lesiones:"Lumbar L5",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Leandro",apellido:"Singer",dni:"32701861",telefono:"3424391731",email:"leandrosinger@hotmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Rodrigo",apellido:"Galarza",dni:"34508641",telefono:"3424425869",email:"rodrigoggalarza@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 8hs / Miércoles 8hs",lesiones:"Hombros y espalda baja",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Laura",apellido:"Badracco",dni:"39695799",telefono:"",email:"cir.badraccolaura@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Catalina",apellido:"Oregon",dni:"43283202",telefono:"3425534451",email:"cataobregon1@gmail.com",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Fernanda",apellido:"Gomez Saverborn",dni:"37446530",telefono:"",email:"fgsauer@gmail.com",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Celeste",apellido:"Rossi",dni:"39454773",telefono:"3425354775",email:"celeste.ro@hotmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-18",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Griselda",apellido:"Sartori",dni:"10807988",telefono:"3426129382",email:"",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-18",creditos:8,metodo:"Efectivo",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 19hs / Miércoles 19hs / Viernes 19hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Luciana",apellido:"Marinelli",dni:"39366633",telefono:"3425047433",email:"lucianaanmarinelli@outlook.com",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Lunes 14hs / Miércoles 14hs / Viernes 14hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Manuela",apellido:"Camacho",dni:"51319385",telefono:"59892172147",email:"camachomanuela5@gmail.com",sede:"Amarras",plan:"CLASE DE PRUEBA",frec:1,inicio:"",creditos:8,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Jueves 8hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"María del Carmen",apellido:"Renzulli",dni:"",telefono:"3426150971",email:"",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-26",creditos:8,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Lunes 20hs / Jueves 20hs",lesiones:"Hipertensa",restricciones:"Monitorear presión arterial",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Agustina",apellido:"Annichini",dni:"32029505",telefono:"3426336749",email:"annichiniagustina@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-26",creditos:0,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Martes 19hs / Jueves 19hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Delfina",apellido:"Kusznierz",dni:"41731796",telefono:"",email:"",sede:"Amarras",plan:"1 DIA",frec:1,inicio:"2026-03-28",creditos:4,metodo:"Sin especificar",monto:0,ep:"Pendiente",cbu:"",horarios:"Sábado 11hs",lesiones:"",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Facundo",apellido:"Castet",dni:"41293627",telefono:"",email:"picocastet@gmail.com",sede:"Amarras",plan:"2 DIAS",frec:2,inicio:"2026-03-25",creditos:8,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"Jugador de fútbol profesional",restricciones:"",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Agustina",apellido:"Morales",dni:"41461769",telefono:"",email:"",sede:"Amarras",plan:"3 DIAS",frec:3,inicio:"2026-03-25",creditos:12,metodo:"Transferencia",monto:0,ep:"Al día",cbu:"",horarios:"Lunes 18hs / Miércoles 18hs / Viernes 18hs",lesiones:"Post parto 4 meses",restricciones:"Adaptar ejercicios — post parto",medico:"",att:[0,0,0,0,0,0]},
+  {nombre:"Patricia",apellido:"Redigonda",dni:"26987960",telefono:"3425231107",email:"patriciaredigonda@gmail.com",sede:"Amarras",plan:"Clases sueltas",frec:1,inicio:"2026-03-18",creditos:0,metodo:"Sin especificar",monto:15000,ep:"Pendiente",cbu:"",horarios:"Miércoles 8hs",lesiones:"Clases sueltas — $15.000 c/u",restricciones:"",medico:"",att:[0,0,0,0,0,0]}
+];
+
+// ═══════════════════════════════════════════
+// INIT FIREBASE
+// ═══════════════════════════════════════════
+let db, students = [], cu = null, currentSede = 'todas';
+let filteredS = [], curPage = 1;
+const PER = 10;
+const COLS = ['#4d7a4d','#b07d5a','#c49080','#7a8caa','#a08ab0','#9aaa7a','#aa8a7a','#7aaa9a'];
+const gc = i => COLS[i % COLS.length];
+const ini2 = s => (s.nombre[0] + (s.apellido[0] || '')).toUpperCase();
+const fmtM = n => n > 0 ? '$' + Number(n).toLocaleString('es-AR') : '—';
+const fmtD = d => { if (!d) return '—'; try { const [y,m,dd] = d.split('-'); return dd+'/'+m+'/'+y; } catch(e){ return d; }};
+const vis = () => currentSede === 'todas' ? students : students.filter(s => s.sede === currentSede);
+
+function setSyncStatus(ok) {
+  const dot1 = document.getElementById('sync-dot');
+  const dot2 = document.getElementById('sync-dot2');
+  const lbl1 = document.getElementById('sync-label');
+  const lbl2 = document.getElementById('sync-label2');
+  if (ok) {
+    [dot1,dot2].forEach(d => { if(d){d.className='sync-dot';} });
+    if(lbl1) lbl1.textContent = 'Conectado · Firebase';
+    if(lbl2) lbl2.textContent = 'Sync';
+  } else {
+    [dot1,dot2].forEach(d => { if(d){d.className='sync-dot sync-err';} });
+    if(lbl1) lbl1.textContent = 'Sin conexión';
+    if(lbl2) lbl2.textContent = 'Offline';
+  }
+}
+
+async function initFirebase() {
+  try {
+    document.getElementById('ls-status').textContent = 'Conectando con Firebase…';
+    firebase.initializeApp(firebaseConfig);
+    db = firebase.firestore();
+
+    document.getElementById('ls-status').textContent = 'Verificando base de datos…';
+
+    // Check if we need to seed initial data
+    const snapshot = await db.collection('students').limit(1).get();
+    if (snapshot.empty) {
+      document.getElementById('ls-status').textContent = 'Cargando 26 clientes por primera vez…';
+      const batch = db.batch();
+      INITIAL_STUDENTS.forEach(s => {
+        const ref = db.collection('students').doc();
+        batch.set(ref, s);
+      });
+      await batch.commit();
+      document.getElementById('ls-status').textContent = '26 clientes cargados ✓';
+    }
+
+    // Real-time listener
+    db.collection('students').orderBy('apellido').onSnapshot(snap => {
+      students = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      document.getElementById('sb-count').textContent = students.length + ' clientes · 3 sedes';
+      setSyncStatus(true);
+      const active = document.querySelector('.view.active');
+      if (active && cu) {
+        const vname = active.id.replace('view-', '');
+        const R = {dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth};
+        if (R[vname]) R[vname]();
+      }
+      updatePendBadge();
+    }, err => {
+      console.error(err);
+      setSyncStatus(false);
+    });
+
+    // Hide loading, show login
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('hide');
+      setTimeout(() => {
+        document.getElementById('loading-screen').style.display = 'none';
+        document.getElementById('login-screen').style.display = 'flex';
+      }, 400);
+    }, 800);
+
+  } catch(err) {
+    document.getElementById('ls-status').textContent = 'Error: ' + err.message;
+    setSyncStatus(false);
+    setTimeout(() => {
+      document.getElementById('loading-screen').classList.add('hide');
+      document.getElementById('login-screen').style.display = 'flex';
+    }, 2000);
+  }
+}
+
+// ═══════════════════════════════════════════
+// AUTH
+// ═══════════════════════════════════════════
+const USERS = {
+  'admin@somawellness.com': {pass:'soma2025',name:'Julián (Admin)',role:'admin',ini:'JA',col:'#4d7a4d'},
+  'inst@somawellness.com': {pass:'inst2025',name:'Instructora',role:'instructor',ini:'IN',col:'#b07d5a'}
+};
+
+function fillL(u,p){document.getElementById('li-u').value=u;document.getElementById('li-p').value=p;}
+function doLogin(){
+  const u=document.getElementById('li-u').value.trim();
+  const p=document.getElementById('li-p').value;
+  const usr=USERS[u];
+  if(usr&&usr.pass===p){
+    cu={...usr,email:u};
+    document.getElementById('login-screen').style.display='none';
+    initApp();
+  } else {
+    document.getElementById('li-err').style.display='block';
+  }
+}
+function logout(){cu=null;document.getElementById('login-screen').style.display='flex';}
+function initApp(){
+  const isA=cu.role==='admin';
+  document.getElementById('main-app').className='main '+(isA?'role-admin':'role-instructor');
+  document.getElementById('sidebar').className='sidebar '+(isA?'role-admin':'role-instructor');
+  document.getElementById('up-av').textContent=cu.ini;
+  document.getElementById('up-av').style.cssText='background:'+cu.col+'33;color:'+cu.col+';';
+  document.getElementById('up-name').textContent=cu.name;
+  document.getElementById('up-role').textContent=isA?'Administrador':'Instructora';
+  document.getElementById('today-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+  showView('dashboard');
+}
+
+// ═══════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════
+function showToast(msg,ico='✓'){
+  const t=document.getElementById('toast');
+  t.innerHTML=ico+' <span>'+msg+'</span>';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3200);
+}
+function updatePendBadge(){
+  const tp=students.filter(s=>s.ep==='Pendiente'||s.ep==='Vencido').length;
+  const b=document.getElementById('pend-badge');
+  b.textContent=tp;b.style.display=tp?'':'none';
+}
+
+// ═══════════════════════════════════════════
+// SEDE
+// ═══════════════════════════════════════════
+function changeSede(v){
+  currentSede=v;
+  const badge=document.getElementById('sede-badge');
+  const cls={todas:'sede-todas badge',Amarras:'sede-amarras badge',Centro:'sede-centro badge',Faro:'sede-faro badge'};
+  const lbl={todas:'Todas las sedes',Amarras:'Sede Amarras',Centro:'Sede Centro',Faro:'Sede Faro'};
+  badge.className=cls[v]||'sede-todas badge';badge.textContent=lbl[v]||v;
+  const a=document.querySelector('.view.active');if(a)showView(a.id.replace('view-',''));
+}
+
+// ═══════════════════════════════════════════
+// NAV
+// ═══════════════════════════════════════════
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',pagos:'Pagos',salud:'Salud',reportes:'Reportes'};
+  document.getElementById('tb-title').textContent=T[v]||v;
+  document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').indexOf("'"+v+"'")>=0)el.classList.add('active');});
+  const R={dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth};
+  if(R[v])R[v]();
+}
+
+// ═══════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════
+function renderDashboard(){
+  const data=vis();
+  const venc=data.filter(s=>s.ep==='Vencido').length;
+  const pend=data.filter(s=>s.ep==='Pendiente').length;
+  const tp=venc+pend;
+  const wkA=data.reduce((a,s)=>a+(s.att?s.att.filter(Boolean).length:0),0);
+  document.getElementById('dash-sg').innerHTML='<div class="sc sc-g"><div class="sl">Total clientes</div><div class="sv">'+data.length+'</div><div class="ss">Activos en el sistema</div></div><div class="sc sc-c"><div class="sl">Asistencia semana</div><div class="sv">'+wkA+'</div><div class="ss">Sesiones registradas</div></div><div class="sc sc-b ao" style="display:flex;flex-direction:column;"><div class="sl">Pagos al día</div><div class="sv">'+data.filter(s=>s.ep==='Al día').length+'</div></div><div class="sc sc-w ao" style="display:flex;flex-direction:column;"><div class="sl">Pendientes/vencidos</div><div class="sv">'+tp+'</div><div class="ss">'+venc+' venc · '+pend+' pend</div></div>';
+  const vals=[38,42,35,wkA||28];const mx=Math.max(...vals);
+  document.getElementById('bar-ch').innerHTML=vals.map((v,i)=>'<div class="bw"><div class="bar" style="height:'+(v/mx*82)+'px"></div><div class="bl">S'+(i+1)+'</div></div>').join('');
+  document.getElementById('recent-list').innerHTML=data.slice(-6).reverse().map((s,i)=>'<div style="display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="openDetail(\''+s.id+'\')"><div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:30px;height:30px;font-size:11px;">'+ini2(s)+'</div><div style="flex:1;"><div style="font-size:12.5px;font-weight:500;">'+s.nombre+' '+s.apellido+'</div><div style="font-size:10.5px;color:var(--muted);">'+s.sede+' · '+s.plan+'</div></div><span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></div>').join('');
+  const sedes=['Amarras','Centro','Faro'];
+  document.getElementById('sede-breakdown').innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">'+sedes.map(sd=>{const n=students.filter(s=>s.sede===sd).length;const al=students.filter(s=>s.sede===sd&&s.ep==='Al día').length;return'<div style="background:var(--cream);border-radius:10px;padding:14px 16px;"><div style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px;">'+sd+'</div><div style="font-family:\'Cormorant Garamond\',serif;font-size:28px;font-weight:300;">'+n+'</div><div style="font-size:11px;color:var(--muted);">'+al+' al día</div><div style="background:var(--border);border-radius:4px;height:4px;margin-top:8px;overflow:hidden;"><div style="height:100%;background:var(--sage);width:'+(n>0?Math.round(al/n*100):0)+'%;border-radius:4px;"></div></div></div>';}).join('')+'</div>';
+  let alerts='';
+  const exp=data.filter(s=>s.ep==='Vencido');
+  if(exp.length)alerts+='<div class="alert al-warn">⚠ '+exp.length+' cliente'+(exp.length>1?'s':'')+'con pago vencido: '+exp.map(s=>s.nombre+' '+s.apellido).join(', ')+'.</div>';
+  const noM=data.filter(s=>s.metodo==='Sin especificar');
+  if(noM.length)alerts+='<div class="alert al-blue">ℹ '+noM.length+' cliente'+(noM.length>1?'s':'')+'sin método de pago. Completar cuando sea posible.</div>';
+  document.getElementById('dash-alerts').innerHTML=alerts;
+}
+
+// ═══════════════════════════════════════════
+// STUDENTS
+// ═══════════════════════════════════════════
+function renderStudents(list){
+  if(list!==undefined){filteredS=list;}
+  else{
+    filteredS=vis();
+    const q=(document.getElementById('srch-inp')?document.getElementById('srch-inp').value:'').toLowerCase();
+    const ep=document.getElementById('filt-ep')?document.getElementById('filt-ep').value:'';
+    const pl=document.getElementById('filt-plan')?document.getElementById('filt-plan').value:'';
+    if(q)filteredS=filteredS.filter(s=>(s.nombre+' '+s.apellido+' '+(s.dni||'')+' '+(s.email||'')+' '+(s.horarios||'')).toLowerCase().indexOf(q)>=0);
+    if(ep)filteredS=filteredS.filter(s=>s.ep===ep);
+    if(pl)filteredS=filteredS.filter(s=>s.plan===pl);
+  }
+  const isA=cu&&cu.role==='admin';
+  const start=(curPage-1)*PER;const data=filteredS.slice(start,start+PER);
+  document.getElementById('stb').innerHTML=data.length===0?'<tr><td colspan="9" style="text-align:center;padding:36px;color:var(--muted);">Sin resultados</td></tr>':data.map((s,i)=>'<tr onclick="openDetail(\''+s.id+'\')"><td><div class="sc2"><div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:30px;height:30px;font-size:11px;">'+ini2(s)+'</div><div><div class="sn">'+s.nombre+' '+s.apellido+'</div><div class="se">'+(s.email||s.telefono||'—')+'</div></div></div></td><td style="font-size:11.5px;font-family:monospace;">'+(s.dni||'—')+'</td><td style="font-size:12px;">'+(s.telefono||'—')+'</td><td><span class="badge b-'+(s.sede==='Amarras'?'ok':s.sede==='Centro'?'warn':'blue')+'">'+s.sede+'</span></td><td style="font-size:11.5px;"><div style="font-weight:500;">'+s.plan+'</div><div style="color:var(--muted);font-size:10px;">'+(s.horarios||'—')+'</div></td><td><span class="cred-pill">◉ '+s.creditos+'</span></td>'+(isA?'<td style="font-size:11.5px;">'+s.metodo+'</td><td><span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></td>':'')+'<td><div class="tact" onclick="event.stopPropagation()"><button class="ibt ed" onclick="openModal(\'edit\',\''+s.id+'\')">✎</button>'+(isA?'<button class="ibt dl" onclick="deleteStudent(\''+s.id+'\',\''+s.nombre+' '+s.apellido+'\')">✕</button>':'')+'</div></td></tr>').join('');
+  document.getElementById('pgri').textContent=Math.min(start+1,filteredS.length)+'–'+Math.min(start+PER,filteredS.length)+' de '+filteredS.length;
+  const pages=Math.ceil(filteredS.length/PER);
+  document.getElementById('pgrb').innerHTML=Array.from({length:pages}).map((_,i)=>'<button class="pb2 '+(i+1===curPage?'act':'')+'" onclick="goPage('+(i+1)+')">'+(i+1)+'</button>').join('');
+}
+function filterStudents(){curPage=1;renderStudents();}
+function goPage(p){curPage=p;renderStudents();}
+
+// ═══════════════════════════════════════════
+// SCHEDULE
+// ═══════════════════════════════════════════
+const SLOTS_WK=['6:00','7:00','8:00','9:00','10:00','14:00','15:00','16:00','17:00','18:00','19:00','20:00'];
+const SLOTS_SAB=['8:00','9:00','10:00','11:00'];
+const DAYS_S=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+
+function getSlot(sede,dia,hora){
+  const dl=dia.toLowerCase().substring(0,3);
+  const h=hora.replace(':00','');
+  const pool=sede==='todas'?students:students.filter(s=>s.sede===sede);
+  return pool.filter(s=>{
+    const hor=(s.horarios||'').toLowerCase();
+    return hor.indexOf(dl)>=0&&(hor.indexOf(h+'hs')>=0||hor.indexOf(h+':00')>=0||hor.indexOf(h+'am')>=0||hor.indexOf(' '+h+' ')>=0||hor.indexOf('/'+h)>=0);
+  });
+}
+
+function renderSchedule(){
+  const sedes=currentSede==='todas'?['Amarras','Centro','Faro']:[currentSede];
+  let html='';
+  sedes.forEach(sede=>{
+    html+='<h3 style="font-family:\'Cormorant Garamond\',serif;font-size:18px;font-weight:400;margin-bottom:12px;">📍 Sede '+sede+'</h3><div class="sch-grid">';
+    DAYS_S.forEach(dia=>{
+      const slots=dia==='Sábado'?SLOTS_SAB:SLOTS_WK;
+      html+='<div class="sch-day"><div class="sd-name">'+dia+'</div>';
+      let hasAny=false;
+      slots.forEach(hora=>{
+        const list=getSlot(sede,dia,hora);
+        if(list.length>0){hasAny=true;html+='<div class="sd-slot '+(list.length>=8?'full':'')+'" title="'+list.map(s=>s.nombre+' '+s.apellido).join(', ')+'"><div class="sd-time">'+hora+' hs</div><div class="sd-cnt">'+list.length+' cliente'+(list.length>1?'s':'')+'</div></div>';}
+      });
+      if(!hasAny)html+='<div style="font-size:10.5px;color:var(--muted);text-align:center;padding:10px 0;opacity:.6;">Sin clientes</div>';
+      html+='</div>';
+    });
+    html+='</div><div style="height:20px;"></div>';
+  });
+  html+='<div class="tw"><div class="ttb"><div style="font-family:\'Cormorant Garamond\',serif;font-size:17px;">Detalle completo</div></div><div style="overflow-x:auto;"><table><thead><tr><th>Sede</th><th>Día</th><th>Hora</th><th>Clientes asignados</th><th>#</th></tr></thead><tbody>';
+  sedes.forEach(sede=>{DAYS_S.forEach(dia=>{const slots=dia==='Sábado'?SLOTS_SAB:SLOTS_WK;slots.forEach(hora=>{const list=getSlot(sede,dia,hora);if(list.length>0)html+='<tr><td><span class="badge b-'+(sede==='Amarras'?'ok':sede==='Centro'?'warn':'blue')+'">'+sede+'</span></td><td style="font-weight:500;">'+dia+'</td><td>'+hora+' hs</td><td style="font-size:11.5px;">'+list.map(s=>s.nombre+' '+s.apellido).join(' · ')+'</td><td><span class="badge '+(list.length>=8?'b-err':'b-ok')+'">'+list.length+'</span></td></tr>';});});});
+  html+='</tbody></table></div></div>';
+  document.getElementById('sch-content').innerHTML=html;
+}
+
+// ═══════════════════════════════════════════
+// ATTENDANCE
+// ═══════════════════════════════════════════
+function renderAttendance(){
+  const days=['Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const today=new Date();
+  const dayOfWeek=today.getDay();
+  const monday=new Date(today);monday.setDate(today.getDate()-(dayOfWeek===0?6:dayOfWeek-1));
+  const nums=Array.from({length:6},(_,i)=>{const d=new Date(monday);d.setDate(monday.getDate()+i);return d.getDate();});
+  const vs=vis();
+  document.getElementById('wk-grid').innerHTML=days.map((d,i)=>'<div class="wk-day '+(i===Math.min(dayOfWeek-1,5)?'today':'')+'" ><div class="wkdn">'+d+'</div><div class="wknum">'+nums[i]+'</div><div class="wkcnt">'+vs.filter(s=>s.att&&s.att[i]).length+'</div></div>').join('');
+  const sf=document.getElementById('att-sede')?document.getElementById('att-sede').value:'';
+  const data=sf?students.filter(s=>s.sede===sf):vs;
+  document.getElementById('att-tbody').innerHTML=data.map((s,i)=>{
+    const att=s.att||[0,0,0,0,0,0];const tot=att.filter(Boolean).length;const pct=Math.round(tot/6*100);
+    return'<tr><td><div class="sc2"><div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:28px;height:28px;font-size:10px;">'+ini2(s)+'</div><span style="font-weight:500;font-size:12.5px;">'+s.nombre+' '+s.apellido+'</span></div></td><td><span class="badge b-'+(s.sede==='Amarras'?'ok':s.sede==='Centro'?'warn':'blue')+'">'+s.sede+'</span></td><td style="font-size:11px;">'+s.plan+'</td>'+att.map((a,j)=>'<td style="text-align:center;"><input type="checkbox" '+(a?'checked':'')+' onchange="toggleAtt(\''+s.id+'\','+j+',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--sage-d);"></td>').join('')+'<td style="font-weight:600;color:var(--sage-d);">'+tot+'</td><td style="min-width:100px;"><div style="display:flex;align-items:center;gap:6px;"><div class="pb-w" style="flex:1;"><div class="pb-f" style="width:'+pct+'%;background:'+(pct>70?'var(--ok)':pct>40?'var(--warn)':'var(--err)')+'"></div></div><span style="font-size:10.5px;color:var(--muted);width:28px;">'+pct+'%</span></div></td></tr>';
+  }).join('');
+}
+
+async function toggleAtt(id, dayIdx, checked) {
+  const s = students.find(x => x.id === id);
+  if (!s) return;
+  const att = [...(s.att || [0,0,0,0,0,0])];
+  att[dayIdx] = checked ? 1 : 0;
+  try {
+    await db.collection('students').doc(id).update({ att });
+    showToast((checked?'Asistencia marcada':'Asistencia desmarcada')+' · '+s.nombre);
+  } catch(e) {
+    showToast('Error al guardar', '⚠');
+  }
+}
+
+function confirmToday() {
+  showToast('Asistencia del día confirmada y guardada en Firebase ✓');
+}
+
+// ═══════════════════════════════════════════
+// PAYMENTS
+// ═══════════════════════════════════════════
+function renderPayments(list){
+  const data=list||vis();
+  const ok=data.filter(s=>s.ep==='Al día');const pd=data.filter(s=>s.ep==='Pendiente');const vc=data.filter(s=>s.ep==='Vencido');
+  document.getElementById('pay-sg').innerHTML='<div class="sc sc-g"><div class="sl">Al día</div><div class="sv">'+ok.length+'</div></div><div class="sc sc-w"><div class="sl">Pendiente</div><div class="sv">'+pd.length+'</div></div><div class="sc sc-b"><div class="sl">Vencido</div><div class="sv">'+vc.length+'</div></div>';
+  document.getElementById('pay-tbody').innerHTML=data.map((s,i)=>'<tr><td><div class="sc2"><div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:28px;height:28px;font-size:10px;">'+ini2(s)+'</div><div><div style="font-weight:500;font-size:12.5px;">'+s.nombre+' '+s.apellido+'</div><div style="font-size:10.5px;color:var(--muted);">'+(s.email||s.telefono||'—')+'</div></div></div></td><td><span class="badge b-'+(s.sede==='Amarras'?'ok':s.sede==='Centro'?'warn':'blue')+'">'+s.sede+'</span></td><td style="font-size:11.5px;">'+s.plan+'</td><td style="font-size:12px;">'+s.metodo+'</td><td style="font-weight:600;">'+fmtM(s.monto)+'</td><td><span class="cred-pill">◉ '+s.creditos+'</span></td><td><span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></td><td><button class="btn btn-o btn-sm" onclick="markPaid(\''+s.id+'\',\''+s.nombre+'\')" style="font-size:11px;">✓ Pagado</button></td></tr>').join('');
+}
+async function markPaid(id,nombre){
+  try {
+    await db.collection('students').doc(id).update({ep:'Al día'});
+    showToast('Pago de '+nombre+' registrado ✓');
+  } catch(e){ showToast('Error al guardar','⚠'); }
+}
+function filterPayments(q){renderPayments(vis().filter(s=>(s.nombre+' '+s.apellido).toLowerCase().indexOf(q.toLowerCase())>=0));}
+function filterPaymentStatus(v){renderPayments(v?vis().filter(s=>s.ep===v):vis());}
+function filterPaymentMethod(v){renderPayments(v?vis().filter(s=>s.metodo===v):vis());}
+
+// ═══════════════════════════════════════════
+// HEALTH
+// ═══════════════════════════════════════════
+function renderHealth(list){
+  const data=list||vis();
+  document.getElementById('health-tbody').innerHTML=data.map((s,i)=>{
+    const noR=!s.restricciones||s.restricciones.trim()==='';
+    return'<tr><td><div class="sc2"><div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:28px;height:28px;font-size:10px;">'+ini2(s)+'</div><div><div style="font-weight:500;">'+s.nombre+' '+s.apellido+'</div><div style="font-size:10.5px;color:var(--muted);">DNI '+(s.dni||'—')+'</div></div></div></td><td><span class="badge b-'+(s.sede==='Amarras'?'ok':s.sede==='Centro'?'warn':'blue')+'">'+s.sede+'</span></td><td style="font-size:11px;">'+(s.horarios||'—')+'</td><td style="font-size:12px;max-width:200px;">'+(s.lesiones||'<span style="color:var(--muted)">Sin notas</span>')+'</td><td style="font-size:12px;max-width:180px;">'+(noR?'<span style="color:var(--ok)">Sin restricciones</span>':'<span style="color:var(--err);">⚠ '+s.restricciones+'</span>')+'</td><td style="font-size:11.5px;">'+(s.medico||'—')+'</td><td><button class="ibt ed" onclick="openModal(\'edit\',\''+s.id+'\')">✎</button></td></tr>';
+  }).join('');
+}
+function filterHealth(q){renderHealth(vis().filter(s=>(s.nombre+' '+s.apellido).toLowerCase().indexOf(q.toLowerCase())>=0));}
+
+// ═══════════════════════════════════════════
+// REPORTS
+// ═══════════════════════════════════════════
+function genReport(type){
+  const out=document.getElementById('rep-out');out.style.display='block';
+  const pBtn='<button class="btn btn-o btn-sm" onclick="window.print()">🖨 Imprimir</button>';
+  const data=vis();
+  if(type==='asistencia'){const rows=data.map(s=>{const att=s.att||[0,0,0,0,0,0];const t=att.filter(Boolean).length;return'<tr><td>'+s.nombre+' '+s.apellido+'</td><td>'+s.sede+'</td><td>'+s.plan+'</td><td style="font-size:11px;">'+(s.horarios||'—')+'</td><td style="font-weight:600;color:var(--sage-d);">'+t+'</td><td>'+Math.round(t/6*100)+'%</td></tr>';}).join('');out.innerHTML='<div class="ch"><div class="ct">📊 Asistencia — Semana actual</div>'+pBtn+'</div><table><thead><tr><th>Cliente</th><th>Sede</th><th>Plan</th><th>Horarios</th><th>Asist.</th><th>%</th></tr></thead><tbody>'+rows+'</tbody></table>';}
+  if(type==='pagos'){const rows=data.map(s=>'<tr><td>'+s.nombre+' '+s.apellido+'</td><td>'+s.sede+'</td><td>'+s.metodo+'</td><td>'+fmtM(s.monto)+'</td><td>'+s.creditos+'</td><td><span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></td></tr>').join('');out.innerHTML='<div class="ch"><div class="ct">💰 Estado de Pagos</div>'+pBtn+'</div><table><thead><tr><th>Cliente</th><th>Sede</th><th>Método</th><th>Monto</th><th>Créditos</th><th>Estado</th></tr></thead><tbody>'+rows+'</tbody></table>';}
+  if(type==='salud'){const rows=data.filter(s=>s.lesiones&&s.lesiones.trim()).map(s=>'<tr><td>'+s.nombre+' '+s.apellido+'</td><td>'+s.sede+'</td><td style="font-size:11px;">'+(s.horarios||'—')+'</td><td style="color:var(--err);font-size:12px;">'+s.lesiones+'</td><td style="font-size:12px;">'+(s.restricciones||'—')+'</td></tr>').join('');out.innerHTML='<div class="ch"><div class="ct">🏥 Fichas de Salud</div>'+pBtn+'</div><p style="font-size:11.5px;color:var(--err);margin-bottom:12px;">⚠ Documento confidencial</p><table><thead><tr><th>Cliente</th><th>Sede</th><th>Horarios</th><th>Lesiones</th><th>Restricciones</th></tr></thead><tbody>'+rows+'</tbody></table>';}
+  if(type==='sedes'){const sedes=['Amarras','Centro','Faro'];const rows=sedes.map(sd=>{const n=students.filter(s=>s.sede===sd);return'<tr><td style="font-weight:600;">'+sd+'</td><td>'+n.length+'</td><td>'+n.filter(s=>s.ep==='Al día').length+'</td><td>'+n.filter(s=>s.ep==='Pendiente').length+'</td><td>'+n.filter(s=>s.ep==='Vencido').length+'</td></tr>';}).join('');out.innerHTML='<div class="ch"><div class="ct">🏢 Resumen por Sede</div>'+pBtn+'</div><table><thead><tr><th>Sede</th><th>Total</th><th>Al día</th><th>Pendiente</th><th>Vencido</th></tr></thead><tbody>'+rows+'</tbody></table>';}
+  if(type==='horarios'){let rows='';const sedes=currentSede==='todas'?['Amarras','Centro','Faro']:[currentSede];sedes.forEach(sede=>{DAYS_S.forEach(dia=>{const slots=dia==='Sábado'?SLOTS_SAB:SLOTS_WK;slots.forEach(hora=>{const list=getSlot(sede,dia,hora);if(list.length>0)rows+='<tr><td>'+sede+'</td><td>'+dia+'</td><td>'+hora+'hs</td><td>'+list.length+'</td><td style="font-size:11.5px;">'+list.map(s=>s.nombre+' '+s.apellido).join(', ')+'</td></tr>';});});});out.innerHTML='<div class="ch"><div class="ct">🗓 Ocupación de Horarios</div>'+pBtn+'</div><table><thead><tr><th>Sede</th><th>Día</th><th>Hora</th><th>#</th><th>Clientes</th></tr></thead><tbody>'+(rows||'<tr><td colspan="5" style="text-align:center;padding:20px;color:var(--muted)">Sin datos de horarios cargados</td></tr>')+'</tbody></table>';}
+  if(type==='pendientes'){const pend=data.filter(s=>s.ep==='Vencido'||s.ep==='Pendiente');out.innerHTML='<div class="ch"><div class="ct">⚠ Cobros Pendientes / Vencidos</div>'+pBtn+'</div><table><thead><tr><th>Cliente</th><th>Sede</th><th>Teléfono</th><th>Email</th><th>Método</th><th>Monto</th><th>Estado</th></tr></thead><tbody>'+(pend.map(s=>'<tr><td style="font-weight:500;">'+s.nombre+' '+s.apellido+'</td><td>'+s.sede+'</td><td style="font-size:12px;">'+(s.telefono||'—')+'</td><td style="font-size:12px;">'+(s.email||'—')+'</td><td>'+s.metodo+'</td><td>'+fmtM(s.monto)+'</td><td><span class="badge b-'+(s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></td></tr>').join('')||'<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--ok)">✓ Sin cobros pendientes</td></tr>')+'</tbody></table>';}
+  out.scrollIntoView({behavior:'smooth'});
+}
+
+// ═══════════════════════════════════════════
+// MODAL
+// ═══════════════════════════════════════════
+function toggleCBU(v){document.getElementById('cbu-wrap').style.display=v==='Débito automático'?'flex':'none';}
+
+function openModal(mode,id){
+  document.getElementById('modal-ov').classList.add('open');
+  document.getElementById('sf').reset();
+  document.getElementById('f-id').value='';
+  document.getElementById('cbu-wrap').style.display='none';
+  if(currentSede!=='todas')document.getElementById('f-sede').value=currentSede;
+  if(mode==='edit'&&id){
+    const s=students.find(x=>x.id===id);if(!s)return;
+    document.getElementById('m-title').textContent='Editar Cliente';
+    document.getElementById('m-sub').textContent=s.nombre+' '+s.apellido;
+    document.getElementById('sbtn').textContent='Guardar cambios';
+    document.getElementById('f-id').value=id;
+    ['nom','ape','dni','tel','mail','sede','plan','cred','ini','hor','met','monto','ep','cbu','les','res','med'].forEach(k=>{
+      const map={nom:'nombre',ape:'apellido',dni:'dni',tel:'telefono',mail:'email',sede:'sede',plan:'plan',cred:'creditos',ini:'inicio',hor:'horarios',met:'metodo',monto:'monto',ep:'ep',cbu:'cbu',les:'lesiones',res:'restricciones',med:'medico'};
+      const el=document.getElementById('f-'+k);if(el)el.value=s[map[k]]||'';
+    });
+    if(s.metodo==='Débito automático')document.getElementById('cbu-wrap').style.display='flex';
+  }else{
+    document.getElementById('m-title').textContent='Nuevo Cliente';
+    document.getElementById('m-sub').textContent='Complete la información';
+    document.getElementById('sbtn').textContent='Guardar cliente';
+    document.getElementById('f-ini').value=new Date().toISOString().split('T')[0];
+  }
+}
+function closeModal(e){if(e.target===document.getElementById('modal-ov'))closeModalD();}
+function closeModalD(){document.getElementById('modal-ov').classList.remove('open');}
+
+async function saveStudent(e){
+  e.preventDefault();
+  const id=document.getElementById('f-id').value;
+  const sbtn=document.getElementById('sbtn');sbtn.textContent='Guardando…';sbtn.disabled=true;
+  const d={
+    nombre:document.getElementById('f-nom').value.trim(),
+    apellido:document.getElementById('f-ape').value.trim(),
+    dni:document.getElementById('f-dni').value.trim(),
+    telefono:document.getElementById('f-tel').value.trim(),
+    email:document.getElementById('f-mail').value.trim(),
+    sede:document.getElementById('f-sede').value,
+    plan:document.getElementById('f-plan').value,
+    creditos:parseInt(document.getElementById('f-cred').value)||0,
+    inicio:document.getElementById('f-ini').value,
+    horarios:document.getElementById('f-hor').value.trim(),
+    metodo:document.getElementById('f-met').value,
+    monto:parseFloat(document.getElementById('f-monto').value)||0,
+    ep:document.getElementById('f-ep').value,
+    cbu:document.getElementById('f-cbu').value.trim(),
+    lesiones:document.getElementById('f-les').value.trim(),
+    restricciones:document.getElementById('f-res').value.trim(),
+    medico:document.getElementById('f-med').value.trim(),
+    frec:2
+  };
+  try {
+    if(id){
+      const existing=students.find(s=>s.id===id);
+      if(existing)d.att=existing.att||[0,0,0,0,0,0];
+      await db.collection('students').doc(id).update(d);
+      showToast(d.nombre+' actualizado/a ✓');
+    } else {
+      d.att=[0,0,0,0,0,0];
+      await db.collection('students').add(d);
+      showToast(d.nombre+' '+d.apellido+' agregado/a ✓');
+    }
+    closeModalD();
+  } catch(err){
+    showToast('Error al guardar: '+err.message,'⚠');
+  }
+  sbtn.textContent='Guardar';sbtn.disabled=false;
+}
+
+async function deleteStudent(id,nombre){
+  if(!confirm('¿Eliminar a '+nombre+'?\nEsta acción no se puede deshacer.'))return;
+  try {
+    await db.collection('students').doc(id).delete();
+    showToast(nombre+' eliminado/a','🗑');
+  } catch(e){ showToast('Error al eliminar','⚠'); }
+}
+
+// ═══════════════════════════════════════════
+// DETAIL PANEL
+// ═══════════════════════════════════════════
+function openDetail(id){
+  const s=students.find(x=>x.id===id);if(!s)return;
+  const i=students.indexOf(s);const isA=cu&&cu.role==='admin';const noR=!s.restricciones||s.restricciones.trim()==='';
+  document.getElementById('dp-content').innerHTML='<div class="dp-av" style="background:'+gc(i)+'22;color:'+gc(i)+';">'+ini2(s)+'</div><div class="dp-name">'+s.nombre+' '+s.apellido+'</div><div class="dp-sub">'+(s.email||s.telefono||'Sin contacto')+'</div><div style="display:flex;justify-content:center;gap:6px;flex-wrap:wrap;margin-bottom:14px;"><span class="badge b-'+(s.sede==='Amarras'?'ok':s.sede==='Centro'?'warn':'blue')+'">'+s.sede+'</span>'+(isA?'<span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span>':'')+'<span class="cred-pill">◉ '+s.creditos+' créditos</span></div><div class="divr"></div><div class="dp-sec"><div class="dp-st">Personal</div><div class="dp-row"><span class="dp-k">DNI</span><span class="dp-v">'+(s.dni||'—')+'</span></div><div class="dp-row"><span class="dp-k">Teléfono</span><span class="dp-v">'+(s.telefono||'—')+'</span></div><div class="dp-row"><span class="dp-k">Alta</span><span class="dp-v">'+fmtD(s.inicio)+'</span></div></div><div class="dp-sec"><div class="dp-st">Plan y Horarios</div><div class="dp-row"><span class="dp-k">Plan</span><span class="dp-v">'+s.plan+'</span></div><div class="dp-row"><span class="dp-k">Horarios</span><span class="dp-v" style="font-size:11px;">'+(s.horarios||'—')+'</span></div></div>'+(isA?'<div class="dp-sec"><div class="dp-st">Pago</div><div class="dp-row"><span class="dp-k">Método</span><span class="dp-v">'+s.metodo+'</span></div><div class="dp-row"><span class="dp-k">Monto</span><span class="dp-v">'+fmtM(s.monto)+'</span></div></div>':'')+'<div class="dp-sec"><div class="dp-st">Salud</div><div style="font-size:12px;margin-bottom:6px;">'+(s.lesiones||'Sin notas')+'</div>'+(noR?'':'<div style="font-size:11.5px;color:var(--err);padding:7px 9px;background:rgba(196,106,90,.07);border-radius:6px;margin-bottom:7px;">⚠ '+s.restricciones+'</div>')+(s.medico?'<div class="dp-row"><span class="dp-k">Médico</span><span class="dp-v" style="font-size:11px;">'+s.medico+'</span></div>':'')+'</div><button class="btn btn-p" style="width:100%;justify-content:center;font-size:12.5px;margin-top:10px;" onclick="openModal(\'edit\',\''+s.id+'\');closeDetail()">✎ Editar ficha</button>';
+  document.getElementById('dp').classList.add('open');
+}
+function closeDetail(){document.getElementById('dp').classList.remove('open');}
+
+// ═══════════════════════════════════════════
+// START
+// ═══════════════════════════════════════════
+window.addEventListener('load', initFirebase);
+</script>
+</body>
+</html>
