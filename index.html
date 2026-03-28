@@ -980,6 +980,7 @@ async function initFirebase(){
       await batch.commit();
     } else {
       await cleanFirebaseDuplicates();
+      await migrateFirebaseData();
     }
 
     // Real-time listeners
@@ -1093,7 +1094,8 @@ function getSlotStudents(sede,dia,hora){
   return students.filter(s=>{
     if(s.sede!==sede)return false;
     const hor=(s.horarios||'').toLowerCase();
-    return hor.includes(dl)&&(hor.includes(h+'hs')||hor.includes(h+':00')||hor.includes(h+'am')||hor.includes(' '+h+' ')||hor.endsWith(' '+h));
+    // Use space before hour to avoid "6" matching "16", "6" matching "16hs" etc.
+    return hor.includes(dl)&&(hor.includes(' '+h+'hs')||hor.includes(' '+h+':00')||hor.startsWith(h+'hs')||hor.startsWith(h+':'));
   });
 }
 function getCupo(sede){return CUPOS[sede]||6;}
@@ -1903,7 +1905,71 @@ async function saveRenovacion(e){
   if(btn){btn.textContent='✓ Confirmar renovación';btn.disabled=false;}
 }
 
+
+// ═══ MIGRACIÓN DE DATOS ═══
+const PLAN_MAP = {
+  '1 DIA':'1 vez/semana','1 dia':'1 vez/semana','1dia':'1 vez/semana',
+  '2 DIAS':'2 veces/semana','2 dias':'2 veces/semana','2dias':'2 veces/semana','2 DIA':'2 veces/semana',
+  '3 DIAS':'3 veces/semana','3 dias':'3 veces/semana','3dias':'3 veces/semana','3 DIA':'3 veces/semana',
+  '4 DIAS':'4 veces/semana','4 dias':'4 veces/semana','4 DIA':'4 veces/semana',
+  '5 DIAS':'5 veces/semana','5 dias':'5 veces/semana','5 DIA':'5 veces/semana',
+  '1 VEZ':'1 vez/semana','2 VECES':'2 veces/semana','3 VECES':'3 veces/semana',
+  '4 VECES':'4 veces/semana','5 VECES':'5 veces/semana',
+  'CLASE SUELTA':'Clase suelta','clase suelta':'Clase suelta',
+  '3 MESES':'3 meses','6 MESES':'6 meses','12 MESES':'12 meses'
+};
+
+function fixHorarioString(h){
+  if(!h)return h;
+  // Fix: "Lunes 17" -> "Lunes 17hs", normalize separators
+  let fixed = h
+    .replace(/\s*\/\s*/g,' / ')           // normalize separators
+    .replace(/(\d+)\s*hs/gi,'$1hs')       // normalize "17 hs" -> "17hs"
+    .replace(/(\d+)\s*Hs/g,'$1hs')
+    .replace(/(\d+)\s*HS/g,'$1hs')
+    .replace(/(\d{1,2}):00/g,'$1hs')      // "17:00" -> "17hs"
+    // Fix days with wrong accents
+    .replace(/Miercoles/gi,'Miércoles')
+    .replace(/Sabado/gi,'Sábado');
+  // Ensure each slot has "hs" suffix
+  fixed = fixed.replace(/(\d{1,2})(?!hs|:)/g,'$1hs');
+  // Clean up double "hshs"
+  fixed = fixed.replace(/hshs/g,'hs');
+  return fixed;
+}
+
+async function migrateFirebaseData(){
+  try{
+    const snap = await db.collection('students').get();
+    const batch = db.batch();
+    let count = 0;
+    snap.docs.forEach(doc=>{
+      const d = doc.data();
+      const updates = {};
+      // Fix plan
+      if(d.plan && PLAN_MAP[d.plan]){
+        updates.plan = PLAN_MAP[d.plan];
+      }
+      // Fix horarios
+      if(d.horarios){
+        const fixed = fixHorarioString(d.horarios);
+        if(fixed !== d.horarios) updates.horarios = fixed;
+      }
+      if(Object.keys(updates).length > 0){
+        batch.update(doc.ref, updates);
+        count++;
+      }
+    });
+    if(count > 0){
+      await batch.commit();
+      console.log('Migration: fixed', count, 'students');
+    }
+  }catch(e){console.log('Migration error:',e);}
+}
+
+
 window.addEventListener('load',()=>{initFirebase().then(()=>{applyMobileLayout();updateMobileNav();}).catch(()=>{applyMobileLayout();updateMobileNav();});});
+
 
 
 </script>
