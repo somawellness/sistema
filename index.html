@@ -1055,6 +1055,7 @@ function initApp(){
   if(mmName)mmName.textContent=cu.name;
   if(mmRole)mmRole.textContent=isA?'Administrador':'Instructora';
   document.getElementById('today-date').textContent=new Date().toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+  applyMobileLayout();
   showView('dashboard');
 }
 
@@ -1178,6 +1179,8 @@ function renderStudents(list){
   document.getElementById('pgri').textContent=`${Math.min(start+1,filteredS.length)}–${Math.min(start+PER,filteredS.length)} de ${filteredS.length}`;
   const pages=Math.ceil(filteredS.length/PER);
   document.getElementById('pgrb').innerHTML=Array.from({length:pages}).map((_,i)=>`<button class="pb2 ${i+1===curPage?'act':''}" onclick="goPage(${i+1})">${i+1}</button>`).join('');
+  // Always update mobile cards too
+  renderMobileStudents();
 }
 function filterStudents(){curPage=1;renderStudents();if(window.innerWidth<=768)renderMobileStudents();}
 function goPage(p){curPage=p;renderStudents();}
@@ -1767,13 +1770,9 @@ function openMobileMenu(){const ov=document.getElementById('mobile-menu-overlay'
 function closeMobileMenu(){const ov=document.getElementById('mobile-menu-overlay');if(!ov)return;ov.classList.remove('open');setTimeout(()=>{ov.style.display='none';},300);}
 function renderMobileStudents(){
   const container=document.getElementById('mobile-students-list');if(!container)return;
-  let data=vis();
-  const q=(document.getElementById('srch-inp')?document.getElementById('srch-inp').value:'').toLowerCase();
-  const ep=document.getElementById('filt-ep')?document.getElementById('filt-ep').value:'';
-  const pl=document.getElementById('filt-plan')?document.getElementById('filt-plan').value:'';
-  if(q)data=data.filter(s=>(s.nombre+' '+s.apellido+' '+(s.dni||'')+' '+(s.telefono||'')).toLowerCase().includes(q));
-  if(ep)data=data.filter(s=>s.ep===ep);
-  if(pl)data=data.filter(s=>s.plan===pl);
+  // Use already-filtered data from filteredS (set by renderStudents)
+  const start=(curPage-1)*PER;
+  let data=filteredS.length>0?filteredS.slice(start,start+PER):vis().slice(0,PER);
   if(!data.length){container.innerHTML='<div style="text-align:center;padding:36px;color:var(--muted);">Sin resultados</div>';return;}
   container.innerHTML=data.map((s,i)=>'<div class="m-card" data-id="'+s.id+'" onclick="openDetail(this.dataset.id)">'
     +'<div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:42px;height:42px;font-size:15px;flex-shrink:0;">'+ini2(s)+'</div>'
@@ -1804,7 +1803,10 @@ function renderMobilePayments(data){
 function applyMobileLayout(){
   const isMob=window.innerWidth<=768;
   document.querySelectorAll('.mobile-cards').forEach(c=>c.style.display=isMob?'block':'none');
-  if(isMob){renderMobileStudents();renderMobilePayments(vis());}
+  // On desktop, make sure tables are visible
+  if(!isMob){
+    document.querySelectorAll('#view-estudiantes table, #view-pagos table').forEach(t=>t.style.display='');
+  }
 }
 window.addEventListener('resize',applyMobileLayout);
 
@@ -1902,6 +1904,8 @@ async function saveRenovacion(e){
 }
 
 window.addEventListener('load',()=>{initFirebase().then(()=>{applyMobileLayout();updateMobileNav();}).catch(()=>{applyMobileLayout();updateMobileNav();});});
+
+
 </script>
 </body>
 </html>
