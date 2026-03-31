@@ -2303,7 +2303,7 @@ function updateHorarioSelector(){
               +' data-sede="'+sede+'"'
               +' data-act="'+actividad+'"'
               +' title="'+dia+' '+h+'hs — '+sede+' ('+actividad+')"'
-          +(full?'':' onclick="toggleSlotMultiAct(this)"')+'>';
+              +(full?'':' onclick="toggleSlotMultiAct(this)"')+'>'
               +'<div style="font-size:10px;color:var(--muted);">'+dl+'</div>'
               +'<div style="font-size:11.5px;font-weight:500;">'+h+'hs</div>'
               +'<div style="font-size:10px;color:'+(full?'var(--err)':'var(--muted)')+'">'+(full?'🚫':adj+'/'+cupo)+'</div>'
@@ -2334,7 +2334,7 @@ function updateHorarioSelector(){
         const isSel = saved.has(slotKey);
         html += '<div class="hs-slot'+(full?' hs-full':isSel?' hs-sel':'')+'"'
           +' data-slotkey="'+slotKey+'"'
-          +(full?'':' onclick="toggleSlotAct(this)"')+'>';
+          +(full?'':' onclick="toggleSlotAct(this)"')+'>'
           +'<div style="font-size:11.5px;font-weight:500;">'+h+'hs</div>'
           +'<div style="font-size:10px;color:'+(full?'var(--err)':'var(--muted)')+';">'+(full?'🚫 Agotado':adj+'/'+cupo)+'</div>'
           +'</div>';
@@ -2412,6 +2412,7 @@ window.addEventListener('load',()=>{
   initFirebase().catch(err=>console.error('Firebase init error:',err));
 });
 window.addEventListener('resize',applyMobileLayout);
+
 
 
 
