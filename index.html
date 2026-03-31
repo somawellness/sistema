@@ -961,52 +961,72 @@ function setSyncStatus(ok){
 
 // ═══ FIREBASE INIT ═══
 async function initFirebase(){
+  const T = ms => new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout ('+ms+'ms)')),ms));
+  const withTimeout = (promise, ms) => Promise.race([promise, T(ms)]);
+  const setStatus = msg => { const el=document.getElementById('ls-status'); if(el) el.textContent=msg; };
+
   try{
+    setStatus('Iniciando Firebase…');
     firebase.initializeApp(firebaseConfig);
-    db=firebase.firestore();
+    db = firebase.firestore();
+    setStatus('Conectando con Firestore…');
 
-    // Load saved plan prices from Firebase config
+    // Load plan prices (5s timeout)
     try{
-      const cfgDoc = await db.collection('config').doc('planes').get();
+      const cfgDoc = await withTimeout(db.collection('config').doc('planes').get(), 5000);
       if(cfgDoc.exists){ const saved=cfgDoc.data(); Object.keys(saved).forEach(k=>{if(PLANES[k])PLANES[k].monto=saved[k];}); }
-    }catch(e){}
+    }catch(e){ console.log('Config load skipped:', e.message); }
 
-    // Check and seed students
-    document.getElementById('ls-status').textContent='Verificando base de datos…';
-    const snap=await db.collection('students').limit(1).get();
+    // Check students (10s timeout)
+    setStatus('Verificando base de datos…');
+    const snap = await withTimeout(db.collection('students').limit(1).get(), 10000);
+
     if(snap.empty){
-      document.getElementById('ls-status').textContent='Cargando clientes por primera vez…';
-      const batch=db.batch();
-      INITIAL_STUDENTS.forEach(s=>{batch.set(db.collection('students').doc(),s);});
-      await batch.commit();
+      setStatus('Cargando clientes por primera vez…');
+      const batch = db.batch();
+      INITIAL_STUDENTS.forEach(s=>{ batch.set(db.collection('students').doc(), s); });
+      await withTimeout(batch.commit(), 15000);
     } else {
-      await cleanFirebaseDuplicates();
-      await migrateFirebaseData();
+      setStatus('Sincronizando…');
+      try{ await withTimeout(cleanFirebaseDuplicates(), 8000); }catch(e){ console.log('cleanDups skipped:', e.message); }
+      try{ await withTimeout(migrateFirebaseData(), 8000); }catch(e){ console.log('migrate skipped:', e.message); }
     }
 
     // Real-time listeners
     db.collection('students').orderBy('apellido').onSnapshot(snap=>{
-      students=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      document.getElementById('sb-count').textContent=students.length+' clientes · 3 sedes';
+      students = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      document.getElementById('sb-count').textContent = students.length+' clientes · 3 sedes';
       setSyncStatus(true);
       updatePendBadge();
-      const a=document.querySelector('.view.active');
+      const a = document.querySelector('.view.active');
       if(a&&cu){const v=a.id.replace('view-','');({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,financiero:renderFinanciero}[v]||function(){})();}
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
-      allTx=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      const a=document.querySelector('.view.active');
-      if(a&&cu&&a.id==='view-financiero')renderFinanciero();
+      allTx = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      const a = document.querySelector('.view.active');
+      if(a&&cu&&a.id==='view-financiero') renderFinanciero();
     },()=>{});
 
     setTimeout(()=>{
       document.getElementById('loading-screen').classList.add('hide');
-      setTimeout(()=>{document.getElementById('loading-screen').style.display='none';document.getElementById('login-screen').style.display='flex';},400);
+      setTimeout(()=>{
+        document.getElementById('loading-screen').style.display='none';
+        document.getElementById('login-screen').style.display='flex';
+      },400);
     },900);
+
   }catch(err){
-    document.getElementById('ls-status').textContent='Error: '+err.message;
-    setTimeout(()=>{document.getElementById('loading-screen').classList.add('hide');document.getElementById('login-screen').style.display='flex';},2500);
+    console.error('initFirebase error:', err);
+    document.getElementById('ls-status').textContent = 'Error: '+err.message;
+    // Still show login after 2.5s even if Firebase failed
+    setTimeout(()=>{
+      document.getElementById('loading-screen').classList.add('hide');
+      setTimeout(()=>{
+        document.getElementById('loading-screen').style.display='none';
+        document.getElementById('login-screen').style.display='flex';
+      },400);
+    },2500);
   }
 }
 
@@ -1033,8 +1053,8 @@ async function cleanFirebaseDuplicates(){
 
 // ═══ AUTH ═══
 const USERS={
-  'admin@somawellness.com':{pass:'Sabi777!',name:'Julián (Admin)',role:'admin',ini:'JA',col:'#4d7a4d'},
-  'profes@somawellness.com':{pass:'Soma2026',name:'Instructora',role:'instructor',ini:'IN',col:'#b07d5a'}
+  '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="93f2f7fefafdd3e0fcfef2e4f6fffffdf6e0e0bdf0fcfe">[email&#160;protected]</a>':{pass:'Sabi777!',name:'Julián (Admin)',role:'admin',ini:'JA',col:'#4d7a4d'},
+  '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="99e9ebf6fffcead9eaf6f4f8eefcf5f5f7fceaeab7faf6f4">[email&#160;protected]</a>':{pass:'Soma2026',name:'Instructora',role:'instructor',ini:'IN',col:'#b07d5a'}
 };
 function doLogin(){
   const u=document.getElementById('li-u').value.trim();
@@ -2359,11 +2379,11 @@ function updateHorarioHidden(){ _updateHorarioHiddenFromState(); }
 function toggleSlot(el,dia,hora,maxDias){ toggleSlotAct(el, document.getElementById('f-sede').value, document.getElementById('f-actividad')?document.getElementById('f-actividad').value||'Pilates':'Pilates', maxDias); }
 function toggleSlotMulti(el,sede,dia,hora,maxDias){ /* replaced by toggleSlotMultiAct */ }
 
+window.addEventListener('load',()=>{initFirebase().then(()=>{applyMobileLayout();updateMobileNav();}).catch(()=>{applyMobileLayout();updateMobileNav();});});
 window.addEventListener('resize',applyMobileLayout);
 
 
 
-window.addEventListener('load',()=>{initFirebase().then(()=>{applyMobileLayout();updateMobileNav();}).catch(()=>{applyMobileLayout();updateMobileNav();});});
 </script>
 </body>
 </html>
