@@ -1476,15 +1476,24 @@ function openModal(mode,id){
     document.getElementById('f-ep').value=s.ep||'Pendiente';document.getElementById('f-cbu').value=s.cbu||'';
     document.getElementById('f-les').value=s.lesiones||'';document.getElementById('f-desc').value=s.descuento||'';
     if(s.metodo==='Débito automático')toggleCBU('Débito automático');
-    setTimeout(updateHorarioSelector,50);
+    // Reset slot state and load from existing horarios
+    _slotState = {};
+    updateActividadSelector(s.sede||'Amarras');
+    const actEl = document.getElementById('f-actividad');
+    if(actEl && s.actividad) actEl.value = s.actividad;
+    setTimeout(updateHorarioSelector, 50);
   }else{
     document.getElementById('m-title').textContent='Nuevo Cliente';
     document.getElementById('m-sub').textContent='Complete la información';
     document.getElementById('sbtn').textContent='Guardar cliente';
     document.getElementById('f-ini').value=new Date().toISOString().split('T')[0];
+    _slotState = {};
+    const sede0 = document.getElementById('f-sede').value||'Amarras';
+    updateActividadSelector(sede0);
   }
 }
-function closeModalD(){document.getElementById('modal-ov').classList.remove('open');}
+function closeModalD(){document.getElementById('modal-ov').classList.remove('open');
+  _slotState = {};}
 
 // ═══ DETAIL PANEL ═══
 function openDetail(id){
@@ -2412,6 +2421,7 @@ window.addEventListener('load',()=>{
   initFirebase().catch(err=>console.error('Firebase init error:',err));
 });
 window.addEventListener('resize',applyMobileLayout);
+
 
 
 
