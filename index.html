@@ -8,8 +8,8 @@
 <meta name="theme-color" content="#2c2c2c">
 <title>SOMA Wellness — Sistema de Gestión</title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.8.0/firebase-app-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/firebase@10.8.0/firebase-firestore-compat.min.js"></script>
 <style>
 
 :root{
@@ -874,7 +874,8 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   <div id="dp-content"></div>
 </div>
 
-<div class="toas
+<div class="toast" id="toast"><span></span></div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
@@ -913,32 +914,32 @@ const SLOTS_SAB = ["8:00","9:00","10:00","11:00"];
 const DAYS_S    = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
 
 const INITIAL_STUDENTS = [
-  {nombre:"Nestor",apellido:"Bermudez",dni:"21691018",telefono:"3426125053",email:"nestun2002@yahoo.com.ar",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"Desgarro de isquiotibial derecho",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Viviana",apellido:"Cirigliani",dni:"22067673",telefono:"3424212787",email:"nestun2002@yahoo.com.ar",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Lucila",apellido:"Donati",dni:"31813370",telefono:"3425018952",email:"ma.luciladonati@gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Tarjeta débito",monto:80000,ep:"Al día",cbu:"",horarios:"Lunes 19hs / Martes 19hs / Jueves 19hs",lesiones:"Contromalasia rotuliana en ambas rodillas y dolor de espalda torácica",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Veronica",apellido:"Del Favero",dni:"34714164",telefono:"3425176575",email:"draveronicadelfavero@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Nestor",apellido:"Bermudez",dni:"21691018",telefono:"3426125053",email:"nestun2002"+"@"+"yahoo.com.ar",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"Desgarro de isquiotibial derecho",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Viviana",apellido:"Cirigliani",dni:"22067673",telefono:"3424212787",email:"nestun2002"+"@"+"yahoo.com.ar",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 17hs / Miércoles 17hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Lucila",apellido:"Donati",dni:"31813370",telefono:"3425018952",email:"ma.luciladonati"+"@"+"gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Tarjeta débito",monto:80000,ep:"Al día",cbu:"",horarios:"Lunes 19hs / Martes 19hs / Jueves 19hs",lesiones:"Contromalasia rotuliana en ambas rodillas y dolor de espalda torácica",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Veronica",apellido:"Del Favero",dni:"34714164",telefono:"3425176575",email:"draveronicadelfavero"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Adrian",apellido:"Beker",dni:"29401498",telefono:"3425176575",email:"",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"Operación de hombro",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Ana del Carmen",apellido:"Lugones",dni:"14574413",telefono:"3424724030",email:"lugonestata@hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Monica",apellido:"Lugones",dni:"13116059",telefono:"3426316675",email:"monilugones@hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"Enfermedad con los ganglios linfáticos brazo derecho",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Julieta",apellido:"Bussi",dni:"28925954",telefono:"3425684996",email:"bussijulieta@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Jueves 19hs / Sábado 9hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Pamela",apellido:"Salas",dni:"29348004",telefono:"3424634503",email:"dra.salas.oftalmopediatria@gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Transferencia",monto:80000,ep:"Al día",cbu:"",horarios:"Martes 7hs / Jueves 7hs / Sábado 9hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Ana del Carmen",apellido:"Lugones",dni:"14574413",telefono:"3424724030",email:"lugonestata"+"@"+"hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Monica",apellido:"Lugones",dni:"13116059",telefono:"3426316675",email:"monilugones"+"@"+"hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Tarjeta crédito",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 18hs / Jueves 18hs",lesiones:"Enfermedad con los ganglios linfáticos brazo derecho",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Julieta",apellido:"Bussi",dni:"28925954",telefono:"3425684996",email:"bussijulieta"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Jueves 19hs / Sábado 9hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Pamela",apellido:"Salas",dni:"29348004",telefono:"3424634503",email:"dra.salas.oftalmopediatria"+"@"+"gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Transferencia",monto:80000,ep:"Al día",cbu:"",horarios:"Martes 7hs / Jueves 7hs / Sábado 9hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Valentina",apellido:"Alesso",dni:"",telefono:"",email:"",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 6hs / Miércoles 6hs / Viernes 6hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Franchesca",apellido:"Disicco",dni:"",telefono:"",email:"",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-26",creditos:8,metodo:"Efectivo",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 14hs / Jueves 14hs",lesiones:"Lumbar L5",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Leandro",apellido:"Singer",dni:"32701861",telefono:"3424391731",email:"leandrosinger@hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Rodrigo",apellido:"Galarza",dni:"34508641",telefono:"3424425869",email:"rodrigoggalarza@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 8hs / Miércoles 8hs",lesiones:"Hombros y espalda baja",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Laura",apellido:"Badracco",dni:"39695799",telefono:"",email:"cir.badraccolaura@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Catalina",apellido:"Oregon",dni:"43283202",telefono:"3425534451",email:"cataobregon1@gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Fernanda",apellido:"Gomez Saverborn",dni:"37446530",telefono:"",email:"fgsauer@gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Celeste",apellido:"Rossi",dni:"39454773",telefono:"3425354775",email:"celeste.ro@hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-18",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Leandro",apellido:"Singer",dni:"32701861",telefono:"3424391731",email:"leandrosinger"+"@"+"hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Rodrigo",apellido:"Galarza",dni:"34508641",telefono:"3424425869",email:"rodrigoggalarza"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-19",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Lunes 8hs / Miércoles 8hs",lesiones:"Hombros y espalda baja",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Laura",apellido:"Badracco",dni:"39695799",telefono:"",email:"cir.badraccolaura"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-17",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Catalina",apellido:"Oregon",dni:"43283202",telefono:"3425534451",email:"cataobregon1"+"@"+"gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Fernanda",apellido:"Gomez Saverborn",dni:"37446530",telefono:"",email:"fgsauer"+"@"+"gmail.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 18hs / Martes 18hs / Miércoles 18hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Celeste",apellido:"Rossi",dni:"39454773",telefono:"3425354775",email:"celeste.ro"+"@"+"hotmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-18",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 8hs / Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Griselda",apellido:"Sartori",dni:"10807988",telefono:"3426129382",email:"",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-18",creditos:8,metodo:"Efectivo",monto:80000,ep:"Al día",cbu:"",horarios:"Lunes 19hs / Miércoles 19hs / Viernes 19hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Luciana",apellido:"Marinelli",dni:"39366633",telefono:"3425047433",email:"lucianaanmarinelli@outlook.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 14hs / Miércoles 14hs / Viernes 14hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Manuela",apellido:"Camacho",dni:"51319385",telefono:"59892172147",email:"camachomanuela5@gmail.com",sede:"Amarras",plan:"Clase suelta",inicio:"",creditos:1,metodo:"Sin especificar",monto:15000,ep:"Pendiente",cbu:"",horarios:"Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Luciana",apellido:"Marinelli",dni:"39366633",telefono:"3425047433",email:"lucianaanmarinelli"+"@"+"outlook.com",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-17",creditos:12,metodo:"Sin especificar",monto:80000,ep:"Pendiente",cbu:"",horarios:"Lunes 14hs / Miércoles 14hs / Viernes 14hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Manuela",apellido:"Camacho",dni:"51319385",telefono:"59892172147",email:"camachomanuela5"+"@"+"gmail.com",sede:"Amarras",plan:"Clase suelta",inicio:"",creditos:1,metodo:"Sin especificar",monto:15000,ep:"Pendiente",cbu:"",horarios:"Jueves 8hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"María del Carmen",apellido:"Renzulli",dni:"",telefono:"3426150971",email:"",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-26",creditos:8,metodo:"Sin especificar",monto:70000,ep:"Pendiente",cbu:"",horarios:"Lunes 20hs / Jueves 20hs",lesiones:"Hipertensa",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Agustina",apellido:"Annichini",dni:"32029505",telefono:"3426336749",email:"annichiniagustina@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-26",creditos:0,metodo:"Sin especificar",monto:70000,ep:"Pendiente",cbu:"",horarios:"Martes 19hs / Jueves 19hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Agustina",apellido:"Annichini",dni:"32029505",telefono:"3426336749",email:"annichiniagustina"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-26",creditos:0,metodo:"Sin especificar",monto:70000,ep:"Pendiente",cbu:"",horarios:"Martes 19hs / Jueves 19hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Delfina",apellido:"Kusznierz",dni:"41731796",telefono:"",email:"",sede:"Amarras",plan:"1 vez/semana",inicio:"2026-03-28",creditos:4,metodo:"Sin especificar",monto:40000,ep:"Pendiente",cbu:"",horarios:"Sábado 11hs",lesiones:"",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Facundo",apellido:"Castet",dni:"41293627",telefono:"",email:"picocastet@gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-25",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"Jugador de fútbol profesional",descuento:"",att:[0,0,0,0,0,0]},
+  {nombre:"Facundo",apellido:"Castet",dni:"41293627",telefono:"",email:"picocastet"+"@"+"gmail.com",sede:"Amarras",plan:"2 veces/semana",inicio:"2026-03-25",creditos:8,metodo:"Transferencia",monto:70000,ep:"Al día",cbu:"",horarios:"Martes 16hs / Jueves 16hs",lesiones:"Jugador de fútbol profesional",descuento:"",att:[0,0,0,0,0,0]},
   {nombre:"Agustina",apellido:"Morales",dni:"41461769",telefono:"",email:"",sede:"Amarras",plan:"3 veces/semana",inicio:"2026-03-25",creditos:12,metodo:"Transferencia",monto:80000,ep:"Al día",cbu:"",horarios:"Lunes 18hs / Miércoles 18hs / Viernes 18hs",lesiones:"Post parto 4 meses",descuento:"",att:[0,0,0,0,0,0]},
-  {nombre:"Patricia",apellido:"Redigonda",dni:"26987960",telefono:"3425231107",email:"patriciaredigonda@gmail.com",sede:"Amarras",plan:"Clase suelta",inicio:"2026-03-18",creditos:0,metodo:"Sin especificar",monto:15000,ep:"Pendiente",cbu:"",horarios:"Miércoles 8hs",lesiones:"Clases sueltas",descuento:"",att:[0,0,0,0,0,0]}
+  {nombre:"Patricia",apellido:"Redigonda",dni:"26987960",telefono:"3425231107",email:"patriciaredigonda"+"@"+"gmail.com",sede:"Amarras",plan:"Clase suelta",inicio:"2026-03-18",creditos:0,metodo:"Sin especificar",monto:15000,ep:"Pendiente",cbu:"",horarios:"Miércoles 8hs",lesiones:"Clases sueltas",descuento:"",att:[0,0,0,0,0,0]}
 ];
 
 let db, students=[], allTx=[], cu=null, currentSede='todas';
@@ -962,60 +963,88 @@ function setSyncStatus(ok){
 // ═══ FIREBASE INIT ═══
 async function initFirebase(){
   const T = ms => new Promise((_,rej)=>setTimeout(()=>rej(new Error('Timeout ('+ms+'ms)')),ms));
-  const withTimeout = (promise, ms) => Promise.race([promise, T(ms)]);
-  const setStatus = msg => { const el=document.getElementById('ls-status'); if(el) el.textContent=msg; };
+  const withTimeout = (p,ms) => Promise.race([p,T(ms)]);
+  const setStatus = msg=>{ const el=document.getElementById('ls-status'); if(el)el.textContent=msg; };
 
+  // Always show login - never block on Firebase
+  const showLogin = ()=>{
+    const ls=document.getElementById('loading-screen');
+    const li=document.getElementById('login-screen');
+    if(ls)ls.style.display='none';
+    if(li)li.style.display='flex';
+  };
+
+  // Load from local data immediately as fallback
+  const loadLocal = ()=>{
+    students = INITIAL_STUDENTS.map((s,i)=>({...s, id:'local_'+i}));
+    document.getElementById('sb-count').textContent=students.length+' clientes · 3 sedes (local)';
+    setSyncStatus(false);
+    updatePendBadge();
+  };
+
+  // Try Firebase with short timeout
   try{
-    setStatus('Iniciando Firebase…');
+    if(typeof firebase==='undefined') throw new Error('Firebase SDK no cargó');
+    setStatus('Conectando…');
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
-    setStatus('Conectando con Firestore…');
 
-    // Load plan prices (5s timeout)
+    // Quick connectivity test — 6 second timeout
+    setStatus('Verificando conexión…');
+    const snap = await withTimeout(
+      db.collection('students').limit(1).get(),
+      6000
+    );
+
+    // SUCCESS — Firebase is working
+    setStatus('Sincronizando datos…');
+
+    // Load config
     try{
-      const cfgDoc = await withTimeout(db.collection('config').doc('planes').get(), 5000);
-      if(cfgDoc.exists){ const saved=cfgDoc.data(); Object.keys(saved).forEach(k=>{if(PLANES[k])PLANES[k].monto=saved[k];}); }
-    }catch(e){ console.log('Config load skipped:', e.message); }
+      const cfg = await withTimeout(db.collection('config').doc('planes').get(),3000);
+      if(cfg.exists){ const s=cfg.data(); Object.keys(s).forEach(k=>{if(PLANES[k])PLANES[k].monto=s[k];}); }
+    }catch(e){}
 
-    // Check students (10s timeout)
-    setStatus('Verificando base de datos…');
-    const snap = await withTimeout(db.collection('students').limit(1).get(), 10000);
-
+    // Seed if empty
     if(snap.empty){
       setStatus('Cargando clientes por primera vez…');
-      const batch = db.batch();
-      INITIAL_STUDENTS.forEach(s=>{ batch.set(db.collection('students').doc(), s); });
-      await withTimeout(batch.commit(), 15000);
+      const batch=db.batch();
+      INITIAL_STUDENTS.forEach(s=>batch.set(db.collection('students').doc(),s));
+      await withTimeout(batch.commit(),15000);
     } else {
-      setStatus('Sincronizando…');
-      try{ await withTimeout(cleanFirebaseDuplicates(), 8000); }catch(e){ console.log('cleanDups skipped:', e.message); }
-      try{ await withTimeout(migrateFirebaseData(), 8000); }catch(e){ console.log('migrate skipped:', e.message); }
+      try{ await withTimeout(cleanFirebaseDuplicates(),5000); }catch(e){}
+      try{ await withTimeout(migrateFirebaseData(),5000); }catch(e){}
     }
 
     // Real-time listeners
     db.collection('students').orderBy('apellido').onSnapshot(snap=>{
-      students = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      document.getElementById('sb-count').textContent = students.length+' clientes · 3 sedes';
+      students=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      document.getElementById('sb-count').textContent=students.length+' clientes · 3 sedes';
       setSyncStatus(true);
       updatePendBadge();
-      const a = document.querySelector('.view.active');
-      if(a&&cu){const v=a.id.replace('view-','');({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,financiero:renderFinanciero}[v]||function(){})();}
+      const a=document.querySelector('.view.active');
+      if(a&&cu){const v=a.id.replace('view-','');
+        ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,
+          asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,
+          financiero:renderFinanciero}[v]||function(){})();}
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
-      allTx = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      const a = document.querySelector('.view.active');
-      if(a&&cu&&a.id==='view-financiero') renderFinanciero();
+      allTx=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      const a=document.querySelector('.view.active');
+      if(a&&cu&&a.id==='view-financiero')renderFinanciero();
     },()=>{});
 
-    // Loading screen already hidden, just update sync status
     setSyncStatus(true);
 
   }catch(err){
-    console.error('initFirebase error:', err);
-    document.getElementById('ls-status').textContent = 'Error: '+err.message;
-    setSyncStatus(false);
+    // Firebase failed — use local data, still show login
+    console.warn('Firebase no disponible, usando datos locales:', err.message);
+    loadLocal();
   }
+
+  showLogin();
+  applyMobileLayout();
 }
 
 async function cleanFirebaseDuplicates(){
@@ -1041,9 +1070,10 @@ async function cleanFirebaseDuplicates(){
 
 // ═══ AUTH ═══
 const USERS={
-  '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="93f2f7fefafdd3e0fcfef2e4f6fffffdf6e0e0bdf0fcfe">[email&#160;protected]</a>':{pass:'Sabi777!',name:'Julián (Admin)',role:'admin',ini:'JA',col:'#4d7a4d'},
-  '<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="99e9ebf6fffcead9eaf6f4f8eefcf5f5f7fceaeab7faf6f4">[email&#160;protected]</a>':{pass:'Soma2026',name:'Instructora',role:'instructor',ini:'IN',col:'#b07d5a'}
+  ['admin'+'@somawellness.com']:{pass:'Sabi777!',name:'Julián (Admin)',role:'admin',ini:'JA',col:'#4d7a4d'},
+  ['profes'+'@somawellness.com']:{pass:'Soma2026',name:'Instructora',role:'instructor',ini:'IN',col:'#b07d5a'}
 };
+
 function doLogin(){
   const u=document.getElementById('li-u').value.trim();
   const p=document.getElementById('li-p').value.trim();
@@ -1279,6 +1309,7 @@ function onTxClienteChange(studentId){
   }
 }
 async function saveTx(e){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   e.preventDefault();
   const clienteId=document.getElementById('tx-cliente').value;
   const cliente=clienteId?students.find(s=>s.id===clienteId):null;
@@ -1302,6 +1333,7 @@ async function saveTx(e){
   }catch(err){showToast('Error: '+err.message,'⚠');}
 }
 async function deleteTx(id){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   if(!confirm('¿Eliminar esta transacción?'))return;
   try{await db.collection('transactions').doc(id).delete();showToast('Transacción eliminada','🗑');}
   catch(e){showToast('Error','⚠');}
@@ -1340,6 +1372,7 @@ function renderPayments(list){
 
 function _afterRenderPayments(data){if(window.innerWidth<=768)renderMobilePayments(data||vis());}
 async function markPaid(id,nombre){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   try{await db.collection('students').doc(id).update({ep:'Al día'});showToast('Pago de '+nombre+' registrado ✓');}
   catch(e){showToast('Error','⚠');}
 }
@@ -1412,6 +1445,7 @@ function checkDniDuplicate(val){
 }
 
 async function deleteStudent(id,nombre){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   if(!confirm(`¿Eliminar a ${nombre}?\nEsta acción no se puede deshacer.`))return;
   try{await db.collection('students').doc(id).delete();showToast(nombre+' eliminado/a','🗑');}
   catch(e){showToast('Error','⚠');}
@@ -1907,6 +1941,7 @@ function renderFinanciero(){
 // SAVESTU — asegurar transacción al inscribir
 // ═══════════════════════════════════════════════════════════════
 async function saveStudent(e){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   e.preventDefault();
   const editId = document.getElementById('f-id').value;
   const dniVal = document.getElementById('f-dni').value.trim();
@@ -2054,6 +2089,7 @@ function updateRenovResumen(){
 }
 
 async function saveRenovacion(e){
+  if(!db){showToast('Sin conexión — abrí con datos móviles','⚠');return;}
   e.preventDefault();
   const sid     = document.getElementById('renov-student-id').value;
   const s       = students.find(x=>x.id===sid); if(!s) return;
@@ -2376,6 +2412,10 @@ window.addEventListener('load',()=>{
   initFirebase().catch(err=>console.error('Firebase init error:',err));
 });
 window.addEventListener('resize',applyMobileLayout);
+
+
+
+
 
 
 
