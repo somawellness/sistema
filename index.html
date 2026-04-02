@@ -452,6 +452,34 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
 </div>
+<div class="ov" id="import-ov" onclick="if(event.target===this)closeImport()">
+  <div class="modal" style="width:500px;">
+    <div class="mhd">
+      <div><div class="mt">Importar Clientes</div><div class="ms">Subí un Excel (.xlsx) o CSV con los datos</div></div>
+      <button class="cbtn" onclick="closeImport()">✕</button>
+    </div>
+    <div style="padding:8px 0;">
+      <div class="fsec">
+        <div class="fst">📄 Archivo</div>
+        <div class="fgrp">
+          <input type="file" id="import-file" accept=".xlsx,.xls,.csv" 
+            style="padding:10px;background:var(--cream);border:1.5px solid var(--border);border-radius:8px;width:100%;font-family:inherit;font-size:13px;"
+            onchange="processImport()">
+        </div>
+        <div style="font-size:11.5px;color:var(--muted);margin-top:6px;">
+          El archivo debe tener columnas: <strong>Nombre, Apellido, DNI, Teléfono, Email, Sede, Plan, Monto, Horarios, Método</strong>.<br>
+          El sistema detecta los nombres automáticamente aunque estén en distinto orden.
+        </div>
+      </div>
+      <div id="import-result" style="margin-top:12px;"></div>
+      <div class="mft" style="margin-top:12px;">
+        <button type="button" class="btn btn-o" onclick="closeImport()">Cancelar</button>
+        <button type="button" class="btn btn-p" id="import-confirm" style="display:none;">✓ Confirmar importación</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="ov" id="renov-ov" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:520px;">
     <div class="mhd"><div><div class="mt">Renovar Plan</div><div class="ms" id="renov-sub"></div></div><button class="cbtn" onclick="document.getElementById('renov-ov').classList.remove('open')">✕</button></div>
@@ -590,14 +618,25 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
           <div style="display:flex;gap:8px;flex-wrap:wrap;">
             <select class="fsel" onchange="filterStudents()" id="filt-ep"><option value="">Todo — estado</option><option>Al día</option><option>Pendiente</option><option>Vencido</option></select>
             <select class="fsel" onchange="filterStudents()" id="filt-plan"><option value="">Todo — plan</option><option>Clase suelta</option><option>1 vez/semana</option><option>2 veces/semana</option><option>3 veces/semana</option><option>4 veces/semana</option><option>5 veces/semana</option><option>3 meses</option><option>6 meses</option><option>12 meses</option></select>
-            <button class="btn btn-o btn-sm" onclick="exportarClientes()" style="font-size:12px;">⬇ Excel</button>
+            <button class="btn btn-o btn-sm" onclick="exportarClientes()" style="font-size:12px;">⬇ Exportar</button>
+            <button class="btn btn-o btn-sm" onclick="openImport()" style="font-size:12px;">⬆ Importar</button>
             <button class="btn btn-p" onclick="openModal('new')">+ Nuevo</button>
           </div>
         </div>
         <div class="mobile-cards" style="display:none;"><div id="mobile-students-list"></div></div>
         <div style="overflow-x:auto;">
           <table>
-            <thead><tr><th>Cliente</th><th>DNI</th><th>Teléfono</th><th>Sede</th><th>Plan / Horarios</th><th>Créd.</th><th class="ao">Método</th><th class="ao">Estado</th><th>Acc.</th></tr></thead>
+            <thead><tr>
+  <th class="th-sort" data-col="apellido" onclick="sortBy('apellido')" style="cursor:pointer;">Cliente<span class="sort-arrow"> ↑</span></th>
+  <th>DNI</th>
+  <th>Teléfono</th>
+  <th class="th-sort" data-col="sede" onclick="sortBy('sede')" style="cursor:pointer;">Sede<span class="sort-arrow"> ↕</span></th>
+  <th class="th-sort" data-col="plan" onclick="sortBy('plan')" style="cursor:pointer;">Plan / Horarios<span class="sort-arrow"> ↕</span></th>
+  <th class="th-sort" data-col="creditos" onclick="sortBy('creditos')" style="cursor:pointer;">Créd.<span class="sort-arrow"> ↕</span></th>
+  <th class="ao">Método</th>
+  <th class="th-sort ao" data-col="ep" onclick="sortBy('ep')" style="cursor:pointer;">Estado<span class="sort-arrow"> ↕</span></th>
+  <th>Acc.</th>
+</tr></thead>
             <tbody id="stb"></tbody>
           </table>
         </div>
