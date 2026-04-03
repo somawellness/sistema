@@ -445,6 +445,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
       <div class="mm-item" data-view="pagos" onclick="showViewMobile('pagos')"><span class="mm-ico">◈</span> Pagos</div>
       <div class="mm-item" data-view="salud" onclick="showViewMobile('salud')"><span class="mm-ico">♡</span> Salud</div>
       <div class="mm-item" data-view="planes" onclick="showViewMobile('planes')"><span class="mm-ico">◧</span> Planes</div>
+      <div class="mm-item" data-view="vencimientos" onclick="showViewMobile('vencimientos')"><span class="mm-ico">⏰</span> Vencimientos</div>
       <div class="mm-item ao" data-view="reportes" onclick="showViewMobile('reportes')"><span class="mm-ico">◧</span> Reportes</div>
     </div>
   </div>
@@ -1161,7 +1162,7 @@ function showView(v){
   const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes'};
   document.getElementById('tb-title').textContent=T[v]||v;
   document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${v}'`))el.classList.add('active');});
-  ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes}[v]||function(){})();
+  ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos}[v]||function(){})();
   if(typeof updateMobileNav==='function')updateMobileNav();
   updateMobileNav();
 }
@@ -1215,6 +1216,11 @@ function renderDashboard(){
   let alerts='';
   const exp=data.filter(s=>s.ep==='Vencido');
   if(exp.length)alerts+=`<div class="alert-box al-warn" style="cursor:pointer;" onclick="goToPending()">⚠ ${exp.length} cliente${exp.length>1?'s':''} con pago vencido: ${exp.map(s=>s.nombre+' '+s.apellido).join(', ')}. <strong>Ver lista →</strong></div>`;
+  // Vencimientos próximos alert
+  const venc7 = data.filter(s=>{ const d=diasHastaVenc(s); return d!==null&&d>=0&&d<=5; });
+  const vencHoy = data.filter(s=>{ const d=diasHastaVenc(s); return d!==null&&d<0; });
+  if(vencHoy.length) alerts+=`<div class="alert-box al-err" style="cursor:pointer;" onclick="showView('vencimientos')">⏰ ${vencHoy.length} plan${vencHoy.length>1?'es':''} vencido${vencHoy.length>1?'s':''}. <strong>Ver vencimientos →</strong></div>`;
+  else if(venc7.length) alerts+=`<div class="alert-box al-warn" style="cursor:pointer;" onclick="showView('vencimientos')">⏰ ${venc7.length} plan${venc7.length>1?'es':''} vence${venc7.length>1?'n':''} en los próximos 5 días. <strong>Ver vencimientos →</strong></div>`;
   const noM=data.filter(s=>s.metodo==='Sin especificar');
   if(noM.length)alerts+=`<div class="alert-box al-blue">ℹ ${noM.length} cliente${noM.length>1?'s':''} sin método de pago cargado.</div>`;
   document.getElementById('dash-alerts').innerHTML=alerts;
@@ -2484,6 +2490,7 @@ window.addEventListener('load',()=>{
   initFirebase().catch(err=>console.error('Firebase init error:',err));
 });
 window.addEventListener('resize',applyMobileLayout);
+
 
 
 
