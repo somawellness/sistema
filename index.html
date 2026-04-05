@@ -1119,7 +1119,6 @@ async function initFirebase(){
     firebase.initializeApp(firebaseConfig);
     db = firebase.firestore();
     auth = firebase.auth();
-    auth.onAuthStateChanged(onAuthStateChanged);
 
     // Quick connectivity test — 6 second timeout
     setStatus('Verificando conexión…');
@@ -1154,11 +1153,12 @@ async function initFirebase(){
       document.getElementById('sb-count').textContent=students.length+' clientes · 3 sedes';
       setSyncStatus(true);
       updatePendBadge();
+      checkSolicitudes();
       const a=document.querySelector('.view.active');
       if(a&&cu){const v=a.id.replace('view-','');
         ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,
-          asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,
-          financiero:renderFinanciero}[v]||function(){})();}
+          asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,
+          financiero:renderFinanciero,vencimientos:renderVencimientos,solicitudes:renderSolicitudes}[v]||function(){})();}
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
@@ -1280,6 +1280,8 @@ function getCupo(sede){return CUPOS[sede]||6;}
 
 // ═══ DASHBOARD ═══
 function renderDashboard(){
+  try{
+
   const data=vis();
   const tp=data.filter(s=>s.ep==='Vencido'||s.ep==='Pendiente').length;
   const venc=data.filter(s=>s.ep==='Vencido').length;
@@ -1322,6 +1324,8 @@ function renderDashboard(){
   const noM=data.filter(s=>s.metodo==='Sin especificar');
   if(noM.length)alerts+=`<div class="alert-box al-blue">ℹ ${noM.length} cliente${noM.length>1?'s':''} sin método de pago cargado.</div>`;
   document.getElementById('dash-alerts').innerHTML=alerts;
+
+  }catch(e){console.error("renderDashboard error:",e);}
 }
 
 function goToPending(){
@@ -2621,7 +2625,7 @@ function getMPToken(sede){
 const MP_PUBLIC_KEY='APP_USR-b886264d-9717-4165-8dfe-191ebd27d5a8';
 const MP_ACCESS_TOKEN='APP_USR-5597322383004977-061219-71774d872f72559363abbab42107f75b-162116748';
 let portalUser=null,portalStudent=null;
-async function onAuthStateChanged(user){if(!user)return;if(cu)return;portalUser=user;if(students.length>0){portalStudent=students.find(s=>s.email&&s.email.toLowerCase()===user.email.toLowerCase());}else{await new Promise(res=>setTimeout(res,2000));portalStudent=students.find(s=>s.email&&s.email.toLowerCase()===user.email.toLowerCase());}if(portalStudent)showPortal();}
+async function onAuthStateChanged(user){ /* Admin uses its own login, not Firebase Auth */ }
 function showPortal(){document.getElementById('login-screen').style.display='none';document.getElementById('portal-screen').style.display='flex';renderPortal();}
 function renderPortal(){const s=portalStudent;if(!s)return;document.getElementById('portal-nombre').textContent=s.nombre+' '+s.apellido;document.getElementById('portal-sede').textContent=s.sede;document.getElementById('portal-plan').textContent=s.plan;const dias=diasHastaVenc(s);const vencEl=document.getElementById('portal-venc');if(vencEl){if(dias===null){vencEl.textContent='Sin fecha';}else if(dias<0){vencEl.innerHTML='<span style="color:var(--err);">Vencido hace '+Math.abs(dias)+' dias</span>';}else if(dias<=5){vencEl.innerHTML='<span style="color:var(--warn);">Vence en '+dias+' dia'+(dias!==1?'s':'')+'</span>';}else{vencEl.innerHTML='Vence el <strong>'+fmtVenc(s)+'</strong> ('+dias+' dias)';}}const p=PLANES[s.plan];const pct=p?Math.max(0,Math.min(100,(s.creditos/p.creditos)*100)):0;document.getElementById('portal-creditos').innerHTML='<div style="font-size:36px;font-weight:300;color:var(--sage-d);">'+s.creditos+'</div><div style="font-size:12px;color:var(--muted);margin-bottom:8px;">creditos disponibles</div><div style="height:6px;background:var(--border);border-radius:4px;overflow:hidden;"><div style="height:100%;width:'+pct+'%;background:var(--sage);border-radius:4px;"></div></div>';const hors=(s.horarios||'').split(' / ').filter(Boolean);document.getElementById('portal-horarios').innerHTML=hors.length?hors.map(h=>'<div style="background:var(--cream);border-radius:8px;padding:8px 12px;font-size:13px;display:flex;justify-content:space-between;align-items:center;"><span>'+h+'</span><button data-h="'+h+'" onclick="portal_cambiarTurno(this.dataset.h)" style="background:none;border:1px solid var(--sage-l);border-radius:6px;padding:3px 8px;font-size:11px;color:var(--sage-d);cursor:pointer;">Cambiar</button></div>').join(''):'<div style="color:var(--muted);font-size:13px;">Sin horarios asignados</div>';if(s.att){const days=['Lun','Mar','Mie','Jue','Vie','Sab'];const total=s.att.reduce((a,v)=>a+v,0);document.getElementById('portal-asistencia').innerHTML='<div style="display:flex;gap:6px;margin-bottom:8px;">'+days.map((d,i)=>'<div style="text-align:center;flex:1;"><div style="font-size:10px;color:var(--muted);margin-bottom:3px;">'+d+'</div><div style="width:100%;aspect-ratio:1;border-radius:6px;background:'+(s.att[i]?'var(--sage)':'var(--border)')+'"></div></div>').join('')+'</div><div style="font-size:12px;color:var(--muted);">'+total+' clase'+(total!==1?'s':'')+' esta semana</div>';}}
 let portalCambioHorario=null;
@@ -2817,6 +2821,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 </script>
