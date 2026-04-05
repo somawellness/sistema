@@ -904,6 +904,19 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 </div>
 
 <div class="toast" id="toast"><span></span></div>
+<div class="view" id="view-solicitudes">
+  <div class="vhd">
+    <div>
+      <h2 style="font-size:22px;font-weight:400;">Solicitudes</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pedidos de clientes desde el portal</p>
+    </div>
+    <button class="btn btn-o btn-sm" onclick="renderSolicitudes()" style="font-size:12px;">↻ Actualizar</button>
+  </div>
+  <div style="background:var(--warm);border-radius:12px;padding:4px 0;" id="solicitudes-content">
+    <div style="text-align:center;padding:40px;color:var(--muted);">Cargando solicitudes...</div>
+  </div>
+</div>
+
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
