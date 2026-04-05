@@ -1666,6 +1666,7 @@ function openDetail(id){
     ${isA?'<div class="dp-sec"><div class="dp-st">Pago</div><div class="dp-row"><span class="dp-k">Método</span><span class="dp-v">'+s.metodo+'</span></div><div class="dp-row"><span class="dp-k">Monto</span><span class="dp-v">'+fmtM(s.monto)+'</span></div></div>':''}
     ${s.lesiones?'<div class="dp-sec"><div class="dp-st">Salud</div><div style="font-size:12px;padding:8px;background:rgba(196,106,90,.07);border-radius:6px;">'+s.lesiones+'</div></div>':''}
     <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap;">
+      <button class="btn btn-o" style="flex:1;justify-content:center;font-size:12.5px;" onclick="crearAccesoPortal('${s.id}')">📧 Acceso portal</button>
       <button class="btn btn-p" style="flex:1;justify-content:center;font-size:12.5px;" onclick="openModal('edit','${s.id}');closeDetail()">✎ Editar</button>
       <button class="btn btn-o" style="flex:1;justify-content:center;font-size:12.5px;color:var(--sage-d);" onclick="closeDetail();openRenovacion('${s.id}')">🔄 Renovar</button>
       ${s.telefono?'<a href="https://wa.me/54'+s.telefono.replace(/\D/g,'')+' " target="_blank" class="btn btn-o" style="flex:1;justify-content:center;font-size:12.5px;color:var(--ok);">💬 WhatsApp</a>':''}
@@ -2671,7 +2672,73 @@ function portalLogout(){if(auth)auth.signOut();portalUser=null;portalStudent=nul
 function showPortalLogin(){document.getElementById('login-screen').style.display='none';document.getElementById('portal-login-screen').style.display='flex';}
 function hidePortalLogin(){document.getElementById('portal-login-screen').style.display='none';document.getElementById('login-screen').style.display='flex';}
 async function checkSolicitudes(){if(!db||!cu||cu.role!=='admin')return;try{const snap=await db.collection('solicitudes').where('estado','==','pendiente').get();const count=snap.docs.length;const badge=document.getElementById('solicitudes-badge');if(badge){badge.textContent=count;badge.style.display=count?'':'none';}}catch(e){}}
-async function renderSolicitudes(){const cont=document.getElementById('solicitudes-content');if(!cont||!db)return;try{const snap=await db.collection('solicitudes').orderBy('createdAt','desc').get();const docs=snap.docs.map(d=>({id:d.id,...d.data()}));if(!docs.length){cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes.</div>';return;}cont.innerHTML=docs.map(sol=>{const isPend=sol.estado==='pendiente';return '<div class="tx-row" style="flex-direction:column;gap:8px;align-items:stretch;"><div style="display:flex;justify-content:space-between;align-items:flex-start;"><div><div style="font-weight:600;font-size:14px;">'+sol.clienteNombre+'</div><div style="font-size:12px;color:var(--muted);">'+sol.sede+' - '+(sol.tipo==='renovacion'?'Renovacion':sol.tipo==='confirmar_pago'?'Confirmar pago':'Cambio de plan')+'</div><div style="font-size:13px;margin-top:4px;">'+sol.mensaje+'</div></div><span class="badge b-'+(isPend?'warn':'ok')+'">'+(isPend?'Pendiente':'Procesado')+'</span></div>'+(isPend?'<div style="display:flex;gap:8px;"><button class="btn btn-p btn-sm" data-sid="'+sol.id+'" data-cid="'+sol.clienteId+'" data-tipo="'+sol.tipo+'" data-data="'+sol.data+'" onclick="procesarSolicitudEl(this,\'aprobado\')" style="font-size:11px;">Aprobar</button><button class="btn btn-o btn-sm" data-sid="'+sol.id+'" onclick="procesarSolicitudEl(this,\'rechazado\')" style="font-size:11px;">Rechazar</button></div>':'')+'</div>';}).join('');}catch(e){cont.innerHTML='<div style="color:var(--err);">Error: '+e.message+'</div>';}}
+async function renderSolicitudes(){
+  const cont = document.getElementById('solicitudes-content');
+  if(!cont||!db) return;
+  try{
+    const snap = await db.collection('solicitudes').orderBy('createdAt','desc').get();
+    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    if(!docs.length){
+      cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía.</div>';
+      return;
+    }
+    // Store docs globally for access by buttons
+    window._solDocs = docs;
+    const pend = docs.filter(d=>d.estado==='pendiente');
+    const proc = docs.filter(d=>d.estado!=='pendiente');
+    let h = '';
+
+    if(pend.length){
+      h += '<div style="font-size:11px;font-weight:600;color:var(--sage-d);letter-spacing:1px;padding:12px 16px 6px;">PENDIENTES ('+pend.length+')</div>';
+      pend.forEach(function(sol, idx2){
+        const globalIdx = docs.indexOf(sol);
+        const fecha = sol.createdAt ? new Date(sol.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+        const tipoLabel = sol.tipo==='renovacion'?'Renovacion de plan':sol.tipo==='confirmar_pago'?'Confirmar pago':sol.tipo==='cambio_plan'?'Cambio de plan':'Solicitud';
+        h += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">';
+        h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">';
+        h += '<div><div style="font-weight:600;font-size:14px;">'+sol.clienteNombre+'</div>';
+        h += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+sol.sede+' - '+tipoLabel+(fecha?' - '+fecha:'')+'</div></div>';
+        h += '<span class="badge b-warn">Pendiente</span></div>';
+        h += '<div style="font-size:13px;background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:10px;">'+sol.mensaje+'</div>';
+        if(sol.comprobante){
+          h += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Comprobante: <strong>'+sol.comprobante+'</strong></div>';
+        }
+        if(sol.data){
+          h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Plan solicitado: <strong style="color:var(--sage-d);">'+sol.data+'</strong></div>';
+        }
+        h += '<div style="display:flex;gap:8px;">';
+        h += '<button class="btn btn-p" data-idx="'+globalIdx+'" onclick="procesarSolIdx(this.dataset.idx,\'aprobado\')" style="font-size:12px;padding:8px 16px;">✓ Aprobar</button>';
+        h += '<button class="btn btn-o" data-idx="'+globalIdx+'" onclick="procesarSolIdx(this.dataset.idx,\'rechazado\')" style="font-size:12px;padding:8px 16px;">✕ Rechazar</button>';
+        if(sol.clienteId){
+          h += '<button class="btn btn-o" data-cid="'+sol.clienteId+'" onclick="openDetail(this.dataset.cid)" style="font-size:12px;padding:8px 16px;">Ver ficha</button>';
+        }
+        h += '</div></div>';
+      });
+    }
+
+    if(proc.length){
+      h += '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;padding:12px 16px 6px;margin-top:8px;">PROCESADAS ('+proc.length+')</div>';
+      proc.forEach(function(sol){
+        const fecha = sol.procesadoAt ? new Date(sol.procesadoAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+        const tipoLabel = sol.tipo==='renovacion'?'Renovacion':sol.tipo==='confirmar_pago'?'Confirmar pago':sol.tipo==='cambio_plan'?'Cambio de plan':'Solicitud';
+        h += '<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
+        h += '<div><div style="font-size:13px;font-weight:500;">'+sol.clienteNombre+'</div>';
+        h += '<div style="font-size:11px;color:var(--muted);">'+sol.sede+' - '+tipoLabel+(fecha?' - '+fecha:'')+'</div></div>';
+        h += '<span class="badge b-ok">'+sol.estado+'</span></div>';
+      });
+    }
+    cont.innerHTML = h;
+  }catch(e){
+    cont.innerHTML = '<div style="color:var(--err);padding:20px;">Error: '+e.message+'</div>';
+  }
+}
+
+function procesarSolIdx(idx2, estado){
+  const sol = window._solDocs && window._solDocs[parseInt(idx2)];
+  if(!sol) return;
+  procesarSolicitud(sol.id, estado, sol.clienteId||'', sol.tipo||'', sol.data||'');
+}
+
 async function procesarSolicitudEl(el,estado){await procesarSolicitud(el.dataset.sid,estado,el.dataset.cid||'',el.dataset.tipo||'',el.dataset.data||'');}
 async function procesarSolicitud(solId,estado,clienteId,tipo,data){try{await db.collection('solicitudes').doc(solId).update({estado,procesadoAt:new Date().toISOString()});if(estado==='aprobado'&&tipo==='cambio_plan'&&clienteId&&data){const p=PLANES[data];if(p)await db.collection('students').doc(clienteId).update({plan:data,creditos:p.creditos,monto:p.monto,ep:'Al dia',inicio:new Date().toISOString().split('T')[0]});}if(estado==='aprobado'&&tipo==='confirmar_pago'&&clienteId){await db.collection('students').doc(clienteId).update({ep:'Al dia'});}showToast('Solicitud '+(estado==='aprobado'?'aprobada':'rechazada'));renderSolicitudes();checkSolicitudes();}catch(e){showToast('Error: '+e.message,'!');}}
 let registroData={};
@@ -2821,6 +2888,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
