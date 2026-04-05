@@ -2394,45 +2394,62 @@ function updateHorarioSelector(){
   const p = PLANES[planKey];
   if(!p){if(selEl)selEl.innerHTML='';return;}
   const n = p.dias;
-  const editId = document.getElementById('f-id').value;
-  if(infoEl) infoEl.textContent='Seleccioná '+n+' turno'+(n>1?'s':'')+' en total'+(sedeVal!=='Multisede'&&(ACTIVIDADES_SEDE[sedeVal]||[]).length>1?' (podés combinar actividades)':'');
+  if(infoEl) infoEl.textContent='';
 
-  const sedesAMostrar = sedeVal==='Multisede'?['Amarras','Centro','Faro']:[sedeVal];
-  let html2='';
-  sedesAMostrar.forEach(sede=>{
-    const sedeCupo=getCupo(sede);
-    const acts=ACTIVIDADES_SEDE[sede]||['Pilates Reformer'];
-    if(sedeVal==='Multisede') html2+='<div style="margin:14px 0 4px;font-weight:600;font-size:12px;color:var(--sage-d);">📍 '+sede+'</div>';
-    acts.forEach(actividad=>{
-      const stateKey=sedeVal==='Multisede'?'Multisede|'+sede+'|'+actividad:actividad;
-      if(acts.length>1) html2+='<div style="font-size:11px;font-weight:600;color:var(--sage-d);margin:8px 0 3px;padding-left:8px;border-left:2px solid var(--sage-l);">🏃 '+actividad+'</div>';
-      // Get days that have slots for this actividad
-      const dias = getDiasForSedeAct(sede, actividad);
-      if(!dias.length){ html2+='<div style="font-size:11px;color:var(--muted);padding:4px 8px;">Sin horarios disponibles</div>'; return; }
-      dias.forEach(dia=>{
-        const slotsHora = getSlotsForSedeActDia(sede, actividad, dia);
-        if(!slotsHora.length) return;
-        html2+='<div class="hs-day-title">'+dia+'</div><div class="hs-grid" data-sede="'+sede+'" data-act="'+actividad+'">';
-        slotsHora.forEach(hora=>{
-          const slotList=getSlotStudentsByActividad(sede,dia,hora,actividad);
-          const adj=editId&&slotList.find(s=>s.id===editId)?slotList.length-1:slotList.length;
-          const full=adj>=sedeCupo;
-          const dl=dia.substring(0,3);
-          const h=hora.replace(':00','');
-          const slotKey=dl+' '+h+'hs';
-          const isSel=(_slotState[stateKey]||new Set()).has(slotKey);
-          html2+='<div class="hs-slot'+(full?' hs-full':isSel?' hs-sel':'')+'"'
-            +' data-slotkey="'+slotKey+'" data-sede="'+sede+'" data-act="'+actividad+'"'
-            +(full?'':' onclick="toggleSlotUnified(this)"')+' data-sedeform="'+sedeVal+'">'
-            +'<div style="font-size:11.5px;font-weight:500;">'+h+'hs</div>'
-            +'<div style="font-size:10px;color:'+(full?'var(--err)':'var(--muted)')+'">'+(full?'🚫':adj+'/'+sedeCupo)+'</div>'
-            +'</div>';
-        });
-        html2+='</div>';
-      });
-    });
-  });
-  if(selEl) selEl.innerHTML=html2;
+  const isMulti = sedeVal==='Multisede';
+  const sedesAMostrar = isMulti?['Amarras','Centro','Faro']:[sedeVal];
+
+  // Build N dropdown rows
+  let h='<div id="slot-rows" style="display:flex;flex-direction:column;gap:10px;">';
+  for(let i=0;i<n;i++){
+    const saved = _slotState['slot_'+i]||{};
+    const showSede = isMulti;
+    const acts = isMulti?(saved.sede?ACTIVIDADES_SEDE[saved.sede]||['Pilates Reformer']:['Pilates Reformer'])
+                        :(ACTIVIDADES_SEDE[sedeVal]||['Pilates Reformer']);
+    const showAct = isMulti || acts.length>1;
+    const dias = saved.actividad&&saved.sede?getDiasForSedeAct(saved.sede||sedeVal,saved.actividad):
+                 (!isMulti&&acts.length===1)?getDiasForSedeAct(sedeVal,acts[0]):[];
+    const slots = saved.dia?getSlotsForSedeActDia(saved.sede||sedeVal,saved.actividad||acts[0],saved.dia):[];
+
+    let cols = showSede&&showAct?'1fr 1fr 1fr 1fr auto':showAct?'1fr 1fr 1fr auto':'1fr 1fr auto';
+    h+='<div class="slot-row" style="display:grid;grid-template-columns:'+cols+';gap:8px;align-items:center;" data-slot="'+i+'">';
+
+    // Sede selector
+    if(showSede){
+      h+='<select class="fsel" style="font-size:13px;" onchange="onSlotSedeChange('+i+')" id="slot-sede-'+i+'">';
+      h+='<option value="">— Sede —</option>';
+      ['Amarras','Centro','Faro'].forEach(s=>h+='<option value="'+s+'"'+(saved.sede===s?' selected':'')+'>'+s+'</option>');
+      h+='</select>';
+    }
+
+    // Activity selector
+    if(showAct){
+      h+='<select class="fsel" style="font-size:13px;" onchange="onSlotActChange('+i+')" id="slot-act-'+i+'">';
+      h+='<option value="">— Actividad —</option>';
+      acts.forEach(a=>h+='<option value="'+a+'"'+(saved.actividad===a?' selected':'')+'>'+a+'</option>');
+      h+='</select>';
+    } else {
+      h+='<input type="hidden" id="slot-act-'+i+'" value="'+acts[0]+'">';
+    }
+
+    // Day selector
+    h+='<select class="fsel" style="font-size:13px;" onchange="onSlotDiaChange('+i+')" id="slot-dia-'+i+'">';
+    h+='<option value="">— Día —</option>';
+    dias.forEach(d=>h+='<option value="'+d+'"'+(saved.dia===d?' selected':'')+'>'+d+'</option>');
+    h+='</select>';
+
+    // Hour selector
+    h+='<select class="fsel" style="font-size:13px;" onchange="onSlotHoraChange('+i+')" id="slot-hora-'+i+'">';
+    h+='<option value="">— Horario —</option>';
+    slots.forEach(hh=>h+='<option value="'+hh+'"'+(saved.hora===hh?' selected':'')+'>'+hh.replace(':00','')+'hs</option>');
+    h+='</select>';
+
+    // Clear button
+    h+='<button type="button" onclick="clearSlotRow('+i+')" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;" title="Limpiar">✕</button>';
+    h+='</div>';
+  }
+  h+='</div>';
+  if(selEl) selEl.innerHTML=h;
   _updateHorarioHiddenFromState();
 }
 
@@ -2457,15 +2474,13 @@ function onSlotActChange(i){
   const isMulti=sedeVal==='Multisede';
   const sedeEl=document.getElementById('slot-sede-'+i);
   const actEl=document.getElementById('slot-act-'+i);
-  const sede=isMulti?(sedeEl?sedeEl.value:'Amarras'):sedeVal;
-  const act=actEl?actEl.value:'Pilates Reformer';
-  // Update day dropdown to only show days with slots for this actividad
+  const sede=isMulti?(sedeEl?sedeEl.value:''): sedeVal;
+  const act=actEl?actEl.value:'';
   const diaEl=document.getElementById('slot-dia-'+i);
-  if(diaEl){
+  if(diaEl&&sede&&act){
     const dias=getDiasForSedeAct(sede,act);
     diaEl.innerHTML='<option value="">— Día —</option>'+dias.map(d=>'<option value="'+d+'">'+d+'</option>').join('');
   }
-  // Reset hora
   const horaEl=document.getElementById('slot-hora-'+i);
   if(horaEl)horaEl.innerHTML='<option value="">— Horario —</option>';
   _saveSlotRow(i);
@@ -2789,6 +2804,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 </script>
 </body>
