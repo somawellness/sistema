@@ -1270,7 +1270,20 @@ function initApp(){
   showView('dashboard');
 }
 
-function showToast(msg,ico='✓'){const t=document.getElementById('toast');t.innerHTML=`${ico} <span>${msg}</span>`;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3200);}
+function showToast(msg,ico){
+  ico = ico||'✓';
+  let t = document.getElementById('toast');
+  if(!t){
+    t = document.createElement('div');
+    t.id = 'toast';
+    t.className = 'toast';
+    document.body.appendChild(t);
+  }
+  t.innerHTML = ico+' <span>'+msg+'</span>';
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(function(){ t.classList.remove('show'); }, 3200);
+}
 function updatePendBadge(){
   const tp=students.filter(s=>s.ep==='Pendiente'||s.ep==='Vencido').length;
   ['pend-badge','pay-mobile-badge'].forEach(id=>{const b=document.getElementById(id);if(b){b.textContent=tp;b.style.display=tp?'':'none';}});
@@ -3159,6 +3172,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
