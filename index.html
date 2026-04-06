@@ -1400,7 +1400,13 @@ function selectAttDay(i){
 function clearAttDay(){attSelectedDay=null;renderAttendance();}
 
 
-function toggleCiCheck(id){ciChecked[id]=!ciChecked[id];const el=document.getElementById('chk-'+id);el.className='ci-chk'+(ciChecked[id]?' checked':'');el.textContent=ciChecked[id]?'✓':'';}
+function toggleCiCheck(id){
+  ciChecked[id]=!ciChecked[id];
+  const el=document.getElementById('chk-'+id);
+  if(el){el.className='ci-chk'+(ciChecked[id]?' checked':'');el.textContent=ciChecked[id]?'✓':'';}
+  const countEl=document.getElementById('ci-checked-count');
+  if(countEl) countEl.textContent=Object.values(ciChecked).filter(Boolean).length+' marcados';
+}
 async function saveCheckin(){
   const dia=ciSlotKey.split('|')[1];const dayIdx=DAYS_S.indexOf(dia);
   try{
@@ -1966,44 +1972,49 @@ function renderSchedule(){
   document.getElementById('sch-content').innerHTML = html;
 }
 
-function getSlotStudentsByActividad(sede,dia,hora,actividad){
-  const diaAbr = dia.substring(0,3); // "Lun", "Mar", etc
-  const horaNum = hora.replace(':00',''); // "6", "18", etc
-  const slotStr = diaAbr+' '+horaNum+'hs'; // "Mar 18hs"
+function getSlotStudentsByActividad(sede, dia, hora, actividad){
+  const horaNum  = hora.replace(':00','');           // '18:00' → '18'
+  const diaAbr3  = dia.substring(0,3);               // 'Lunes' → 'Lun'
+  // Generate all possible slot string variants
+  const variants = [
+    diaAbr3+' '+horaNum+'hs',                        // 'Lun 18hs'  ← standard
+    dia+' '+horaNum+'hs',                            // 'Lunes 18hs' ← legacy full name
+    diaAbr3+' '+hora+'hs',                           // 'Lun 18:00hs' ← just in case
+  ];
 
   return students.filter(function(s){
-    // Check sede
     if(s.sede!=='Multisede' && s.sede!==sede) return false;
+
+    const hors = (s.horarios||'').split(' / ');
+
     if(s.sede==='Multisede'){
-      // For multisede, sede must appear before the slot
-      const hors = (s.horarios||'').split(' / ');
       return hors.some(function(h){
-        // Format: "Sede Actividad: Día HHhs" or "Sede Día HHhs"
-        if(!h.includes(sede)) return false;
-        if(!h.includes(slotStr)) return false;
-        // Check actividad if specified
-        if(actividad && actividad!=='Pilates'){
-          return h.includes(actividad);
+        if(!h.toLowerCase().includes(sede.toLowerCase())) return false;
+        const hasSlot = variants.some(function(v){ return h.includes(v); });
+        if(!hasSlot) return false;
+        if(actividad && actividad!=='Pilates' && actividad!=='Pilates Reformer'){
+          return h.toLowerCase().includes(actividad.toLowerCase());
         }
         return true;
       });
     }
 
-    // Single sede student - parse each slot
-    const hors = (s.horarios||'').split(' / ');
+    // Single-sede student
     return hors.some(function(h){
-      // h could be:
-      // "Mar 18hs" (single activity sede)
-      // "Pilates Reformer: Mar 18hs"
-      // "Yoga: Vie 20hs"
-      if(!h.includes(slotStr)) return false;
-      // Check actividad match
+      const hasSlot = variants.some(function(v){ return h.includes(v); });
+      if(!hasSlot) return false;
+
+      // Check actividad
       const colonIdx = h.indexOf(': ');
       if(colonIdx >= 0){
         const slotAct = h.substring(0, colonIdx).trim();
-        return slotAct === actividad;
+        // exact match or fuzzy (Pilates Reformer ↔ Pilates)
+        if(slotAct === actividad) return true;
+        if(actividad==='Pilates' && slotAct.startsWith('Pilates')) return true;
+        if(slotAct==='Pilates' && actividad.startsWith('Pilates')) return true;
+        return false;
       }
-      // No actividad prefix - match any actividad (single-activity sede)
+      // No actividad prefix → single-activity sede, match anything
       return true;
     });
   });
@@ -3127,6 +3138,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
