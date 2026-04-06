@@ -3165,5 +3165,26 @@ function registro_renderPago(){
 
 
 </script>
+
+<!-- MODAL CHECKIN ASISTENCIA -->
+<div class="ov" id="ci-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:500px;">
+    <div class="mhd">
+      <div>
+        <div class="mt" id="ci-title">Clase</div>
+        <div class="ms" id="ci-sub"></div>
+      </div>
+      <button class="ibt cl" onclick="document.getElementById('ci-ov').classList.remove('open')">✕</button>
+    </div>
+    <div id="ci-content" style="max-height:55vh;overflow-y:auto;margin-bottom:16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:12px;color:var(--muted);" id="ci-checked-count">0 marcados</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-o btn-sm" onclick="ciMarkAll()">Marcar todos</button>
+        <button class="btn btn-p btn-sm" onclick="saveCheckin()">Guardar asistencia</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
