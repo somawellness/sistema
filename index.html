@@ -2131,7 +2131,9 @@ function openCheckin(key,sede,dia,hora,actividad){
 function renderFinanciero(){
   const labels = {dia:'hoy',semana:'esta semana',mes:'este mes',todo:'total acumulado'};
   document.getElementById('fin-period-label').textContent = 'Ingresos de '+labels[finPeriod];
+  console.log('renderFinanciero: allTx=', allTx.length, 'period=', finPeriod);
   const filtered = filterTxByPeriod(finPeriod, allTx);
+  console.log('filtered:', filtered.length);
   const searchFiltered = currentTxFilter
     ? filtered.filter(tx=>(tx.clienteNombre||tx.descripcion||tx.concepto||'').toLowerCase().includes(currentTxFilter.toLowerCase()))
     : filtered;
@@ -2750,7 +2752,9 @@ function hidePortalLogin(){document.getElementById('portal-login-screen').style.
 async function checkSolicitudes(){if(!db||!cu||cu.role!=='admin')return;try{const snap=await db.collection('solicitudes').where('estado','==','pendiente').get();const count=snap.docs.length;const badge=document.getElementById('solicitudes-badge');if(badge){badge.textContent=count;badge.style.display=count?'':'none';}}catch(e){}}
 async function renderSolicitudes(){
   const cont = document.getElementById('solicitudes-content');
-  if(!cont||!db) return;
+  console.log('renderSolicitudes called, db=', !!db, 'cont=', !!cont);
+  if(!cont){ console.log('NO CONT'); return; }
+  if(!db){ console.log('NO DB'); return; }
   cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div>';
   try{
     // Use get() without orderBy to avoid index requirements
@@ -2758,10 +2762,11 @@ async function renderSolicitudes(){
     const docs = snap.docs.map(function(d){ return {id:d.id,...d.data()}; });
     // Sort client-side by createdAt desc
     docs.sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
+    console.log('Solicitudes loaded:', docs.length, docs);
     window._solDocs = docs;
 
     if(!docs.length){
-      cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía.</div>';
+      cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía. (db conectado, colección vacía)</div>';
       return;
     }
 
@@ -3007,6 +3012,7 @@ function parseHorariosToSlotState(horStr, sede){
 
 
 function syncStudentPaymentsToTx(){
+  console.log('syncStudentPaymentsToTx: allTx=', allTx.length, 'students=', students.length);
   // If allTx is empty but we have students with payment info,
   // show a read-only view of student payments in financiero
   if(allTx.length > 0) return; // already have data
@@ -3063,6 +3069,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
