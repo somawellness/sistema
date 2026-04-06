@@ -738,7 +738,39 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
       <div id="rep-out" class="card" style="display:none;"></div>
     </div>
 
+  
+
+<div class="view" id="view-vencimientos">
+  <div class="vhd">
+    <div>
+      <h2 style="font-size:22px;font-weight:400;">Vencimientos</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Seguimiento de planes próximos a vencer</p>
+    </div>
+    <select class="fsel" id="venc-filtro" onchange="filtrarVencimientos()" style="font-size:13px;width:auto;">
+      <option value="vencidos">Solo vencidos</option>
+      <option value="7">Próximos 5 días</option>
+      <option value="30" selected>Próximos 30 días</option>
+      <option value="todos">Todos</option>
+    </select>
   </div>
+  <div class="sg" id="venc-sg" style="margin-bottom:16px;"></div>
+  <div style="background:var(--warm);border-radius:12px;padding:4px 0;" id="venc-content"></div>
+</div>
+
+<div class="view" id="view-solicitudes">
+  <div class="vhd">
+    <div>
+      <h2 style="font-size:22px;font-weight:400;">Solicitudes del portal</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pedidos de clientes que requieren tu aprobación</p>
+    </div>
+    <button class="btn btn-o btn-sm" onclick="renderSolicitudes()" style="font-size:12px;">↻ Actualizar</button>
+  </div>
+  <div style="background:var(--warm);border-radius:14px;overflow:hidden;border:1px solid var(--border);" id="solicitudes-content">
+    <div style="text-align:center;padding:40px;color:#8a8070;">Cargando...</div>
+  </div>
+</div>
+
+</div>
 </div>
 
 <!-- MODAL CLIENTE -->
@@ -902,35 +934,9 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     <div style="font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">FICHA CLIENTE</div>
     <button class="cbtn" onclick="closeDetail()">✕</button>
   </div>
-  <div class="view" id="view-vencimientos">
-  <div class="vhd">
-    <div>
-      <h2 style="font-size:22px;font-weight:400;">Vencimientos</h2>
-      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Seguimiento de planes próximos a vencer</p>
-    </div>
-    <select class="fsel" id="venc-filtro" onchange="filtrarVencimientos()" style="font-size:13px;width:auto;">
-      <option value="vencidos">Solo vencidos</option>
-      <option value="7">Próximos 5 días</option>
-      <option value="30" selected>Próximos 30 días</option>
-      <option value="todos">Todos</option>
-    </select>
-  </div>
-  <div class="sg" id="venc-sg" style="margin-bottom:16px;"></div>
-  <div style="background:var(--warm);border-radius:12px;padding:4px 0;" id="venc-content"></div>
-</div>
+  
 
-<div class="view" id="view-solicitudes">
-  <div class="vhd">
-    <div>
-      <h2 style="font-size:22px;font-weight:400;">Solicitudes del portal</h2>
-      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pedidos de clientes que requieren tu aprobación</p>
-    </div>
-    <button class="btn btn-o btn-sm" onclick="renderSolicitudes()" style="font-size:12px;">↻ Actualizar</button>
-  </div>
-  <div style="background:var(--warm);border-radius:14px;overflow:hidden;border:1px solid var(--border);" id="solicitudes-content">
-    <div style="text-align:center;padding:40px;color:#8a8070;">Cargando...</div>
-  </div>
-</div>
+
 <div id="dp-content"></div>
 </div>
 
