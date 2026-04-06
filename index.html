@@ -848,6 +848,12 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
         <div class="fst">📍 Sede y Plan</div>
         <div class="fg fg3">
           <div class="fgrp"><label>Sede *</label><select id="f-sede" onchange="onSedeChange()"><option>Amarras</option><option>Centro</option><option>Faro</option><option>Multisede</option></select></div>
+              <div class="fgrp" id="f-actividad-wrap" style="display:none;">
+                <label>Actividad principal</label>
+                <select id="f-actividad">
+                  <option value="">— Todas —</option>
+                </select>
+              </div>
           <div class="fgrp"><label>Plan *</label>
             <select id="f-plan" onchange="onPlanChange(this.value)">
               <option value="">— Seleccionar —</option>
@@ -942,7 +948,60 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
               <option>Tarjeta débito</option><option>Mercado Pago</option><option>Débito automático</option>
             </select>
           </div>
-          <div class="fgrp"><label>Fe<script>
+          
+          <div class="fgrp"><label>Fecha *</label>
+            <input id="tx-fecha" type="date" required>
+          </div>
+          <div class="fgrp"><label>Sede</label>
+            <select id="tx-sede">
+              <option value="">— Todas —</option>
+              <option value="Amarras">Amarras</option>
+              <option value="Centro">Centro</option>
+              <option value="Faro">Faro</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;">
+        <button type="button" class="btn btn-o" onclick="document.getElementById('tx-ov').classList.remove('open')">Cancelar</button>
+        <button type="submit" class="btn btn-p" id="tx-sbtn">Guardar ingreso</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- DETAIL PANEL -->
+<div class="dp" id="dp">
+  <div id="dp-content"></div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="ov" id="import-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:480px;">
+    <div class="mhd">
+      <div><div class="mt">Importar Clientes</div><div class="ms">Subir archivo Excel (.xlsx)</div></div>
+      <button class="ibt cl" onclick="document.getElementById('import-ov').classList.remove('open')">✕</button>
+    </div>
+    <div style="margin-bottom:16px;">
+      <input type="file" id="import-file" accept=".xlsx,.xls,.csv" style="width:100%;padding:10px;border:1.5px dashed var(--border);border-radius:8px;font-size:13px;">
+    </div>
+    <div id="import-result" style="max-height:200px;overflow-y:auto;font-size:12px;margin-bottom:12px;"></div>
+    <div id="import-confirm" style="display:none;">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Revisá los datos antes de confirmar.</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('import-ov').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="confirmImport()">Confirmar importación</button>
+      </div>
+    </div>
+    <button class="btn btn-p" onclick="previewImport()" style="width:100%;">Vista previa</button>
+  </div>
+</div>
+
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
   authDomain: "soma-wellness-8c891.firebaseapp.com",
@@ -2849,7 +2908,6 @@ function hidePortalLogin(){document.getElementById('portal-login-screen').style.
 async function checkSolicitudes(){if(!db||!cu||cu.role!=='admin')return;try{const snap=await db.collection('solicitudes').where('estado','==','pendiente').get();const count=snap.docs.length;const badge=document.getElementById('solicitudes-badge');if(badge){badge.textContent=count;badge.style.display=count?'':'none';}}catch(e){}}
 async function renderSolicitudes(){
   const cont = document.getElementById('solicitudes-content');
-  console.log('renderSolicitudes called, db=', !!db, 'cont=', !!cont);
   if(!cont){ console.log('NO CONT'); return; }
   if(!db){ console.log('NO DB'); return; }
   cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div>';
@@ -2857,7 +2915,6 @@ async function renderSolicitudes(){
     const snap = await db.collection('solicitudes').get();
     const docs = snap.docs.map(function(d){ return {id:d.id,...d.data()}; });
     docs.sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
-    console.log('Solicitudes loaded:', docs.length, docs);
     window._solDocs = docs;
 
     if(!docs.length){
@@ -2867,7 +2924,6 @@ async function renderSolicitudes(){
 
     const pend = docs.filter(function(d){ return d.estado==='pendiente'; });
     const proc = docs.filter(function(d){ return d.estado!=='pendiente'; });
-    console.log('pend:', pend.length, 'proc:', proc.length);
 
     let h = '';
 
@@ -2916,10 +2972,7 @@ async function renderSolicitudes(){
         h += '</div>';
       });
     }
-
-    console.log('Setting innerHTML, h length:', h.length);
     cont.innerHTML = h;
-    console.log('innerHTML set, cont children:', cont.children.length);
 
   }catch(e){
     console.error('renderSolicitudes error:', e);
@@ -3115,7 +3168,6 @@ function parseHorariosToSlotState(horStr, sede){
 
 
 function syncStudentPaymentsToTx(){
-  console.log('syncStudentPaymentsToTx: allTx=', allTx.length, 'students=', students.length);
   if(allTx.length > 0) return;
   // Build transactions from every student with a monto
   const synth = [];
@@ -3134,7 +3186,6 @@ function syncStudentPaymentsToTx(){
       _synthetic: true
     });
   });
-  console.log('synth transactions generated:', synth.length);
   allTx = synth;
   const a = document.querySelector('.view.active');
   if(a && a.id === 'view-financiero') renderFinanciero();
@@ -3172,6 +3223,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
