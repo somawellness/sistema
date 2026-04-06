@@ -907,13 +907,15 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 <div class="view" id="view-solicitudes">
   <div class="vhd">
     <div>
-      <h2 style="font-size:22px;font-weight:400;">Solicitudes</h2>
-      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pedidos de clientes desde el portal</p>
+      <h2 style="font-family:var(--serif,serif);font-size:24px;font-weight:400;">Solicitudes del portal</h2>
+      <p style="font-size:12px;color:var(--muted);margin-top:2px;">Pedidos de clientes que requieren tu aprobación</p>
     </div>
     <button class="btn btn-o btn-sm" onclick="renderSolicitudes()" style="font-size:12px;">↻ Actualizar</button>
   </div>
-  <div style="background:var(--warm);border-radius:12px;padding:4px 0;" id="solicitudes-content">
-    <div style="text-align:center;padding:40px;color:var(--muted);">Cargando solicitudes...</div>
+  <div id="solicitudes-content">
+    <div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div>
+  </div>
+</div>
   </div>
 </div>
 
@@ -1620,12 +1622,46 @@ function openModal(mode,id){
     document.getElementById('f-ep').value=s.ep||'Pendiente';document.getElementById('f-cbu').value=s.cbu||'';
     document.getElementById('f-les').value=s.lesiones||'';document.getElementById('f-desc').value=s.descuento||'';
     if(s.metodo==='Débito automático')toggleCBU('Débito automático');
-    // Reset slot state and load from existing horarios
+    // Reset slot state and pre-populate from saved horarios
     _slotState = {};
+    if(s.horarios) parseHorariosToSlotState(s.horarios, s.sede||'Amarras');
     updateActividadSelector(s.sede||'Amarras');
     const actEl = document.getElementById('f-actividad');
     if(actEl && s.actividad) actEl.value = s.actividad;
-    setTimeout(updateHorarioSelector, 50);
+    // Give time for DOM to update before populating selects
+    setTimeout(function(){
+      updateHorarioSelector();
+      // After dropdowns render, restore saved selections
+      setTimeout(function(){
+        Object.entries(_slotState).forEach(function([key, row]){
+          const i = parseInt(key.replace('slot_',''));
+          const sedeEl = document.getElementById('slot-sede-'+i);
+          const actEl2 = document.getElementById('slot-act-'+i);
+          const diaEl  = document.getElementById('slot-dia-'+i);
+          const horaEl = document.getElementById('slot-hora-'+i);
+          if(sedeEl && row.sede)    sedeEl.value = row.sede;
+          if(actEl2 && row.actividad) actEl2.value = row.actividad;
+          if(diaEl){
+            // Refresh day options for this actividad
+            const sede2  = (sedeEl&&sedeEl.value)||s.sede||'Amarras';
+            const act2   = (actEl2&&actEl2.value)||row.actividad;
+            const dias2  = getDiasForSedeAct(sede2,act2);
+            diaEl.innerHTML = '<option value="">— Día —</option>'+dias2.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+            if(row.dia) diaEl.value = row.dia;
+          }
+          if(horaEl && diaEl){
+            // Refresh hora options
+            const sede2  = (sedeEl&&sedeEl.value)||s.sede||'Amarras';
+            const act2   = (actEl2&&actEl2.value)||row.actividad;
+            const dia2   = diaEl.value;
+            const slots2 = getSlotsForSedeActDia(sede2,act2,dia2);
+            horaEl.innerHTML = '<option value="">— Horario —</option>'+slots2.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
+            if(row.hora) horaEl.value = row.hora;
+          }
+        });
+        _updateHorarioHiddenFromState();
+      }, 100);
+    }, 80);
   }else{
     document.getElementById('m-title').textContent='Nuevo Cliente';
     document.getElementById('m-sub').textContent='Complete la información';
@@ -2856,6 +2892,69 @@ async function crearAccesoPortal(studentId){
   }catch(e){showToast('Error: '+e.message,'⚠');}
 }
 
+
+function parseHorariosToSlotState(horStr, sede){
+  if(!horStr) return;
+  const isMulti = sede==='Multisede';
+  const parts = horStr.split(' / ').filter(Boolean);
+  const DIAS_MAP = {
+    'Lun':'Lunes','Mar':'Martes','Mie':'Miércoles','Mié':'Miércoles',
+    'Jue':'Jueves','Vie':'Viernes','Sab':'Sábado','Sáb':'Sábado'
+  };
+  parts.forEach(function(part, i){
+    // Formats:
+    // "Actividad: Día HHhs"  e.g. "Pilates Reformer: Mar 18hs"
+    // "Sede Actividad: Día HHhs" (multisede)
+    // "Día HHhs" (single activity, no prefix)
+    let sedeParsed = '', actParsed = '', diaParsed = '', horaParsed = '';
+    
+    // Check for sede prefix (multisede)
+    let remaining = part.trim();
+    if(isMulti){
+      const sedeNames = ['Amarras','Centro','Faro'];
+      for(const sn of sedeNames){
+        if(remaining.startsWith(sn+' ')){
+          sedeParsed = sn;
+          remaining = remaining.slice(sn.length+1).trim();
+          break;
+        }
+      }
+    } else {
+      sedeParsed = sede;
+    }
+    
+    // Check for actividad prefix "Actividad: "
+    const colonIdx = remaining.indexOf(': ');
+    if(colonIdx > 0){
+      actParsed = remaining.slice(0,colonIdx).trim();
+      remaining = remaining.slice(colonIdx+2).trim();
+    } else {
+      // Single activity - get from sede
+      const acts = ACTIVIDADES_SEDE[sedeParsed||sede]||['Pilates Reformer'];
+      actParsed = acts[0];
+    }
+    
+    // Parse "Día HHhs" e.g. "Mar 18hs"
+    const timeMatch = remaining.match(/^(\w+)\s+(\d+)hs$/);
+    if(timeMatch){
+      const diaAbr = timeMatch[1];
+      const hora   = timeMatch[2]+':00';
+      // Map abbreviation to full name
+      diaParsed = DIAS_MAP[diaAbr] || diaAbr;
+      horaParsed = hora;
+    }
+    
+    if(diaParsed && horaParsed){
+      _slotState['slot_'+i] = {
+        sede:      sedeParsed || sede,
+        actividad: actParsed,
+        dia:       diaParsed,
+        hora:      horaParsed
+      };
+    }
+  });
+}
+
 window.addEventListener('resize',applyMobileLayout);
 
 
@@ -2888,6 +2987,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
