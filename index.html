@@ -2757,70 +2757,76 @@ async function renderSolicitudes(){
   if(!db){ console.log('NO DB'); return; }
   cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div>';
   try{
-    // Use get() without orderBy to avoid index requirements
     const snap = await db.collection('solicitudes').get();
     const docs = snap.docs.map(function(d){ return {id:d.id,...d.data()}; });
-    // Sort client-side by createdAt desc
     docs.sort(function(a,b){ return (b.createdAt||'').localeCompare(a.createdAt||''); });
     console.log('Solicitudes loaded:', docs.length, docs);
     window._solDocs = docs;
 
     if(!docs.length){
-      cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía. (db conectado, colección vacía)</div>';
+      cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía.</div>';
       return;
     }
 
     const pend = docs.filter(function(d){ return d.estado==='pendiente'; });
     const proc = docs.filter(function(d){ return d.estado!=='pendiente'; });
+    console.log('pend:', pend.length, 'proc:', proc.length);
+
     let h = '';
 
+    // ── PENDIENTES ──
     if(pend.length){
       h += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--sage-d);text-transform:uppercase;border-bottom:1px solid var(--border);">PENDIENTES ('+pend.length+')</div>';
       pend.forEach(function(sol){
         const fecha = sol.createdAt ? new Date(sol.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
-        const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo]||sol.tipo;
+        const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo] || sol.tipo || '—';
         const globalIdx = docs.indexOf(sol);
-        const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
-        h += '<div class="tx-row" style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center;padding:14px 16px;">';
-        h += '<div class="av" style="width:36px;height:36px;font-size:13px;flex-shrink:0;background:rgba(74,103,65,.12);color:var(--sage-d);">'+initials+'</div>';
+        const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
+        h += '<div class="tx-row" style="display:grid;grid-template-columns:40px 1fr auto auto auto;gap:12px;align-items:center;padding:14px 16px;">';
+        h += '<div class="av" style="width:36px;height:36px;font-size:13px;background:rgba(74,103,65,.12);color:var(--sage-d);">'+initials+'</div>';
         h += '<div>'
-          + '<div style="font-weight:600;font-size:14px;">'+sol.clienteNombre+'</div>'
-          + '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+sol.sede+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
-          + '<div style="font-size:12px;margin-top:4px;">'+sol.mensaje+'</div>'
-          + (sol.comprobante?'<div style="font-size:11px;color:var(--sage-d);margin-top:3px;">📎 '+sol.comprobante+'</div>':'')
-          + (sol.data?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">Plan: <strong>'+sol.data+'</strong></div>':'')
+          + '<div style="font-weight:600;font-size:14px;">'+(sol.clienteNombre||'—')+'</div>'
+          + '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+(sol.sede||'—')+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
+          + '<div style="font-size:12px;margin-top:4px;">'+(sol.mensaje||'')+'</div>'
+          + (sol.comprobante ? '<div style="font-size:11px;color:var(--sage-d);margin-top:3px;">📎 '+sol.comprobante+'</div>' : '')
+          + (sol.data ? '<div style="font-size:11px;color:var(--muted);margin-top:2px;">Plan: <strong>'+sol.data+'</strong></div>' : '')
           + '</div>';
         h += '<span class="badge b-warn" style="white-space:nowrap;">Pendiente</span>';
-        h += '<button class="btn btn-p btn-sm" data-idx="'+globalIdx+'" data-estado="aprobado" onclick="procesarSolIdx(this.dataset.idx,this.dataset.estado)" style="font-size:11px;white-space:nowrap;">✓ Aprobar</button>';
+        h += '<button class="btn btn-p btn-sm" data-idx="'+globalIdx+'" data-estado="aprobado" onclick="procesarSolIdx(this.dataset.idx,this.dataset.estado)" style="font-size:11px;">✓ Aprobar</button>';
         h += '<div style="display:flex;flex-direction:column;gap:4px;">'
           + '<button class="btn btn-o btn-sm" data-idx="'+globalIdx+'" data-estado="rechazado" onclick="procesarSolIdx(this.dataset.idx,this.dataset.estado)" style="font-size:11px;">✕ Rechazar</button>'
-          + (sol.clienteId?'<button class="btn btn-o btn-sm" data-cid="'+sol.clienteId+'" onclick="openDetail(this.dataset.cid)" style="font-size:11px;">Ver ficha</button>':'')
+          + (sol.clienteId ? '<button class="btn btn-o btn-sm" data-cid="'+sol.clienteId+'" onclick="openDetail(this.dataset.cid)" style="font-size:11px;">Ver ficha</button>' : '')
           + '</div>';
         h += '</div>';
       });
     }
 
+    // ── PROCESADAS ──
     if(proc.length){
       h += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);margin-top:8px;">PROCESADAS ('+proc.length+')</div>';
       proc.forEach(function(sol){
         const fecha = sol.procesadoAt ? new Date(sol.procesadoAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
-        const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo]||sol.tipo;
-        const badgeClass = sol.estado==='aprobado'?'b-ok':sol.estado==='rechazado'?'b-err':'b-warn';
-        const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0];}).join('').substring(0,2).toUpperCase();
-        h += '<div class="tx-row" style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 16px;">';
-        h += '<div class="av" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:rgba(74,103,65,.08);color:var(--sage-d);">'+initials+'</div>';
+        const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo] || sol.tipo || '—';
+        const badgeClass = sol.estado==='aprobado' ? 'b-ok' : sol.estado==='rechazado' ? 'b-err' : 'b-warn';
+        const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
+        h += '<div class="tx-row" style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:10px 16px;">';
+        h += '<div class="av" style="width:30px;height:30px;font-size:11px;background:rgba(74,103,65,.08);color:var(--sage-d);">'+initials+'</div>';
         h += '<div>'
-          + '<div style="font-weight:500;font-size:13px;">'+sol.clienteNombre+'</div>'
-          + '<div style="font-size:11px;color:var(--muted);">'+sol.sede+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
+          + '<div style="font-weight:500;font-size:13px;">'+(sol.clienteNombre||'—')+'</div>'
+          + '<div style="font-size:11px;color:var(--muted);">'+(sol.sede||'—')+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
           + '</div>';
         h += '<span class="badge '+badgeClass+'">'+sol.estado+'</span>';
         h += '</div>';
       });
     }
+
+    console.log('Setting innerHTML, h length:', h.length);
     cont.innerHTML = h;
+    console.log('innerHTML set, cont children:', cont.children.length);
+
   }catch(e){
     console.error('renderSolicitudes error:', e);
-    cont.innerHTML = '<div style="color:var(--err);padding:20px;">Error cargando solicitudes: '+e.message+'</div>';
+    cont.innerHTML = '<div style="color:var(--err);padding:20px;">Error: '+e.message+'<br><small>'+e.stack+'</small></div>';
   }
 }
 
@@ -3013,28 +3019,28 @@ function parseHorariosToSlotState(horStr, sede){
 
 function syncStudentPaymentsToTx(){
   console.log('syncStudentPaymentsToTx: allTx=', allTx.length, 'students=', students.length);
-  // If allTx is empty but we have students with payment info,
-  // show a read-only view of student payments in financiero
-  if(allTx.length > 0) return; // already have data
-  // Build synthetic transactions from students
-  const synth = students
-    .filter(s => s.monto && s.monto > 0 && s.inicio)
-    .map(s => ({
+  if(allTx.length > 0) return;
+  // Build transactions from every student with a monto
+  const synth = [];
+  students.forEach(function(s){
+    const monto = parseFloat(s.monto) || 0;
+    if(monto <= 0) return;
+    synth.push({
       id: 'student_'+s.id,
-      clienteNombre: s.nombre+' '+s.apellido,
-      monto: s.monto,
-      metodo: s.metodo||'Sin especificar',
+      clienteNombre: (s.nombre||'')+' '+(s.apellido||''),
+      monto: monto,
+      metodo: s.metodo || 'Sin especificar',
       concepto: 'inscripcion',
-      fecha: s.inicio,
-      sede: s.sede,
-      descripcion: s.plan,
+      fecha: s.inicio || new Date().toISOString().split('T')[0],
+      sede: s.sede || '',
+      descripcion: s.plan || '',
       _synthetic: true
-    }));
-  if(synth.length > 0){
-    allTx = synth;
-    const a = document.querySelector('.view.active');
-    if(a && a.id === 'view-financiero') renderFinanciero();
-  }
+    });
+  });
+  console.log('synth transactions generated:', synth.length);
+  allTx = synth;
+  const a = document.querySelector('.view.active');
+  if(a && a.id === 'view-financiero') renderFinanciero();
 }
 
 window.addEventListener('resize',applyMobileLayout);
@@ -3069,6 +3075,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
