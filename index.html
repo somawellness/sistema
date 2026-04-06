@@ -848,12 +848,6 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
         <div class="fst">📍 Sede y Plan</div>
         <div class="fg fg3">
           <div class="fgrp"><label>Sede *</label><select id="f-sede" onchange="onSedeChange()"><option>Amarras</option><option>Centro</option><option>Faro</option><option>Multisede</option></select></div>
-              <div class="fgrp" id="f-actividad-wrap" style="display:none;">
-                <label>Actividad principal</label>
-                <select id="f-actividad">
-                  <option value="">— Todas —</option>
-                </select>
-              </div>
           <div class="fgrp"><label>Plan *</label>
             <select id="f-plan" onchange="onPlanChange(this.value)">
               <option value="">— Seleccionar —</option>
@@ -3255,5 +3249,6 @@ function registro_renderPago(){
 
 
 </script>
+<div id="f-actividad-wrap" style="display:none!important;"><select id="f-actividad"></select></div>
 </body>
 </html>
