@@ -1944,24 +1944,45 @@ function renderSchedule(){
 }
 
 function getSlotStudentsByActividad(sede,dia,hora,actividad){
-  const dl = dia.toLowerCase().substring(0,3);
-  const h = hora.replace(':00','');
-  return students.filter(s=>{
+  const diaAbr = dia.substring(0,3); // "Lun", "Mar", etc
+  const horaNum = hora.replace(':00',''); // "6", "18", etc
+  const slotStr = diaAbr+' '+horaNum+'hs'; // "Mar 18hs"
+
+  return students.filter(function(s){
+    // Check sede
+    if(s.sede!=='Multisede' && s.sede!==sede) return false;
     if(s.sede==='Multisede'){
-      // Multisede students: check if they have this sede+dia+hora in their horarios
-      const hor = (s.horarios||'').toLowerCase();
-      const sMatch = hor.includes(sede.toLowerCase());
-      const dMatch = hor.includes(dl);
-      const hMatch = hor.includes(' '+h+'hs') || hor.startsWith(h+'hs');
-      const aMatch = (!s.actividad || s.actividad===actividad || actividad==='Pilates');
-      return sMatch && dMatch && hMatch && aMatch;
+      // For multisede, sede must appear before the slot
+      const hors = (s.horarios||'').split(' / ');
+      return hors.some(function(h){
+        // Format: "Sede Actividad: Día HHhs" or "Sede Día HHhs"
+        if(!h.includes(sede)) return false;
+        if(!h.includes(slotStr)) return false;
+        // Check actividad if specified
+        if(actividad && actividad!=='Pilates'){
+          return h.includes(actividad);
+        }
+        return true;
+      });
     }
-    if(s.sede !== sede) return false;
-    const hor = (s.horarios||'').toLowerCase();
-    const dMatch = hor.includes(dl);
-    const hMatch = hor.includes(' '+h+'hs') || hor.startsWith(h+'hs');
-    const actMatch = !s.actividad || s.actividad===actividad || (actividad==='Pilates'&&!s.actividad);
-    return dMatch && hMatch && actMatch;
+
+    // Single sede student - parse each slot
+    const hors = (s.horarios||'').split(' / ');
+    return hors.some(function(h){
+      // h could be:
+      // "Mar 18hs" (single activity sede)
+      // "Pilates Reformer: Mar 18hs"
+      // "Yoga: Vie 20hs"
+      if(!h.includes(slotStr)) return false;
+      // Check actividad match
+      const colonIdx = h.indexOf(': ');
+      if(colonIdx >= 0){
+        const slotAct = h.substring(0, colonIdx).trim();
+        return slotAct === actividad;
+      }
+      // No actividad prefix - match any actividad (single-activity sede)
+      return true;
+    });
   });
 }
 
@@ -2711,58 +2732,84 @@ async function checkSolicitudes(){if(!db||!cu||cu.role!=='admin')return;try{cons
 async function renderSolicitudes(){
   const cont = document.getElementById('solicitudes-content');
   if(!cont||!db) return;
+  cont.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div>';
   try{
     const snap = await db.collection('solicitudes').orderBy('createdAt','desc').get();
-    const docs = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const docs = snap.docs.map(function(d){ return {id:d.id,...d.data()}; });
+    window._solDocs = docs;
+
     if(!docs.length){
       cont.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">No hay solicitudes todavía.</div>';
       return;
     }
-    // Store docs globally for access by buttons
-    window._solDocs = docs;
-    const pend = docs.filter(d=>d.estado==='pendiente');
-    const proc = docs.filter(d=>d.estado!=='pendiente');
+
+    const pend = docs.filter(function(d){ return d.estado==='pendiente'; });
+    const proc = docs.filter(function(d){ return d.estado!=='pendiente'; });
+
     let h = '';
 
+    // ── PENDING ──
     if(pend.length){
-      h += '<div style="font-size:11px;font-weight:600;color:var(--sage-d);letter-spacing:1px;padding:12px 16px 6px;">PENDIENTES ('+pend.length+')</div>';
-      pend.forEach(function(sol, idx2){
-        const globalIdx = docs.indexOf(sol);
+      h += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--sage-d);text-transform:uppercase;border-bottom:1px solid var(--border);">Pendientes ('+pend.length+')</div>';
+      pend.forEach(function(sol, i){
         const fecha = sol.createdAt ? new Date(sol.createdAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
-        const tipoLabel = sol.tipo==='renovacion'?'Renovacion de plan':sol.tipo==='confirmar_pago'?'Confirmar pago':sol.tipo==='cambio_plan'?'Cambio de plan':'Solicitud';
-        h += '<div style="padding:14px 16px;border-bottom:1px solid var(--border);">';
-        h += '<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">';
-        h += '<div><div style="font-weight:600;font-size:14px;">'+sol.clienteNombre+'</div>';
-        h += '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+sol.sede+' - '+tipoLabel+(fecha?' - '+fecha:'')+'</div></div>';
-        h += '<span class="badge b-warn">Pendiente</span></div>';
-        h += '<div style="font-size:13px;background:var(--cream);border-radius:8px;padding:10px 12px;margin-bottom:10px;">'+sol.mensaje+'</div>';
-        if(sol.comprobante){
-          h += '<div style="font-size:12px;color:var(--muted);margin-bottom:8px;">Comprobante: <strong>'+sol.comprobante+'</strong></div>';
-        }
-        if(sol.data){
-          h += '<div style="font-size:12px;color:var(--muted);margin-bottom:10px;">Plan solicitado: <strong style="color:var(--sage-d);">'+sol.data+'</strong></div>';
-        }
-        h += '<div style="display:flex;gap:8px;">';
-        h += '<button class="btn btn-p" data-idx="'+globalIdx+'" onclick="procesarSolIdx(this.dataset.idx,\'aprobado\')" style="font-size:12px;padding:8px 16px;">✓ Aprobar</button>';
-        h += '<button class="btn btn-o" data-idx="'+globalIdx+'" onclick="procesarSolIdx(this.dataset.idx,\'rechazado\')" style="font-size:12px;padding:8px 16px;">✕ Rechazar</button>';
-        if(sol.clienteId){
-          h += '<button class="btn btn-o" data-cid="'+sol.clienteId+'" onclick="openDetail(this.dataset.cid)" style="font-size:12px;padding:8px 16px;">Ver ficha</button>';
-        }
-        h += '</div></div>';
+        const tipoLabel = {
+          'renovacion':     'Renovación',
+          'confirmar_pago': 'Confirmar pago',
+          'cambio_plan':    'Cambio de plan',
+          'cambio_turno_unico': 'Cambio turno (única vez)'
+        }[sol.tipo] || sol.tipo;
+
+        const globalIdx = docs.indexOf(sol);
+        h += '<div class="tx-row" style="display:grid;grid-template-columns:auto 1fr auto auto auto;gap:12px;align-items:center;padding:12px 16px;">';
+        // Avatar
+        h += '<div class="av" style="width:34px;height:34px;font-size:12px;flex-shrink:0;background:rgba(74,103,65,.12);color:var(--sage-d);">'
+          + (sol.clienteNombre||'?').split(' ').map(function(n){ return n[0]; }).join('').substring(0,2).toUpperCase()+'</div>';
+        // Info
+        h += '<div>'
+          + '<div style="font-weight:600;font-size:14px;">'+sol.clienteNombre+'</div>'
+          + '<div style="font-size:12px;color:var(--muted);margin-top:2px;">'+sol.sede+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
+          + '<div style="font-size:12px;margin-top:4px;color:var(--char);">'+sol.mensaje+'</div>'
+          + (sol.comprobante?'<div style="font-size:11px;color:var(--sage-d);margin-top:3px;">📎 '+sol.comprobante+'</div>':'')
+          + (sol.data && sol.data!==sol.plan?'<div style="font-size:11px;color:var(--muted);margin-top:2px;">Plan: <strong>'+sol.data+'</strong></div>':'')
+          + '</div>';
+        // Badge
+        h += '<span class="badge b-warn">Pendiente</span>';
+        // Buttons
+        h += '<button class="btn btn-p btn-sm" data-idx="'+globalIdx+'" data-estado="aprobado" onclick="procesarSolIdx(this.dataset.idx,this.dataset.estado)" style="font-size:11px;white-space:nowrap;">✓ Aprobar</button>';
+        h += '<div style="display:flex;flex-direction:column;gap:4px;">';
+        h += '<button class="btn btn-o btn-sm" data-idx="'+globalIdx+'" data-estado="rechazado" onclick="procesarSolIdx(this.dataset.idx,this.dataset.estado)" style="font-size:11px;">✕ Rechazar</button>';
+        if(sol.clienteId) h += '<button class="btn btn-o btn-sm" data-cid="'+sol.clienteId+'" onclick="openDetail(this.dataset.cid)" style="font-size:11px;">Ver ficha</button>';
+        h += '</div>';
+        h += '</div>';
       });
     }
 
+    // ── PROCESSED ──
     if(proc.length){
-      h += '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:1px;padding:12px 16px 6px;margin-top:8px;">PROCESADAS ('+proc.length+')</div>';
+      h += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase;border-bottom:1px solid var(--border);margin-top:8px;">Procesadas ('+proc.length+')</div>';
       proc.forEach(function(sol){
         const fecha = sol.procesadoAt ? new Date(sol.procesadoAt).toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
-        const tipoLabel = sol.tipo==='renovacion'?'Renovacion':sol.tipo==='confirmar_pago'?'Confirmar pago':sol.tipo==='cambio_plan'?'Cambio de plan':'Solicitud';
-        h += '<div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">';
-        h += '<div><div style="font-size:13px;font-weight:500;">'+sol.clienteNombre+'</div>';
-        h += '<div style="font-size:11px;color:var(--muted);">'+sol.sede+' - '+tipoLabel+(fecha?' - '+fecha:'')+'</div></div>';
-        h += '<span class="badge b-'+(sol.estado==='aprobado'?'ok':sol.estado==='rechazado'?'err':'warn')+'">'+sol.estado+'</span></div>';
+        const tipoLabel = {
+          'renovacion':     'Renovación',
+          'confirmar_pago': 'Confirmar pago',
+          'cambio_plan':    'Cambio de plan',
+          'cambio_turno_unico': 'Cambio turno (única vez)'
+        }[sol.tipo] || sol.tipo;
+        const badgeClass = sol.estado==='aprobado'?'b-ok':sol.estado==='rechazado'?'b-err':'b-warn';
+
+        h += '<div class="tx-row" style="display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 16px;">';
+        h += '<div class="av" style="width:30px;height:30px;font-size:11px;flex-shrink:0;background:rgba(74,103,65,.08);color:var(--sage-d);">'
+          + (sol.clienteNombre||'?').split(' ').map(function(n){ return n[0]; }).join('').substring(0,2).toUpperCase()+'</div>';
+        h += '<div>'
+          + '<div style="font-weight:500;font-size:13px;">'+sol.clienteNombre+'</div>'
+          + '<div style="font-size:11px;color:var(--muted);">'+sol.sede+' · '+tipoLabel+(fecha?' · '+fecha:'')+'</div>'
+          + '</div>';
+        h += '<span class="badge '+badgeClass+'">'+sol.estado+'</span>';
+        h += '</div>';
       });
     }
+
     cont.innerHTML = h;
   }catch(e){
     cont.innerHTML = '<div style="color:var(--err);padding:20px;">Error: '+e.message+'</div>';
@@ -2987,6 +3034,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
