@@ -914,7 +914,12 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     </div>
     <button class="btn btn-o btn-sm" onclick="renderSolicitudes()" style="font-size:12px;">↻ Actualizar</button>
   </div>
-  <div style="background:var(--warm);border-radius:14px;overflow:hidden;border:1px solid var(--bord<script>
+  <div style="background:var(--warm);border-radius:14px;overflow:hidden;border:1px solid var(--border);" id="solicitudes-content">
+    <div style="text-align:center;padding:40px;color:#8a8070;">Cargando...</div>
+  </div>
+</div>
+
+<script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
   authDomain: "soma-wellness-8c891.firebaseapp.com",
@@ -1545,7 +1550,7 @@ function renderPlanes(){
   document.getElementById('planes-list').innerHTML=Object.entries(PLANES).map(([k,v])=>{
     const creds=v.creditos+' crédito'+(v.creditos>1?'s':'')+' · '+v.dias+' día'+(v.dias>1?'s':'')+'/semana';
     const priceEl=isA
-      ? '<input class="plan-price-input" type="number" min="0" step="1000" data-plan="'+k+'" value="'+Number(v.monto||0)+'" onchange="updatePlanPrice(this.dataset.plan,this.value)">'
+      ? '<input class="plan-price-input" type="number" min="0" step="1000" data-plan="'+k+'" value="'+parseFloat(v.monto)||0+'" onchange="updatePlanPrice(this.dataset.plan,this.value)">'
       : '<span class="plan-price">$'+v.monto.toLocaleString('es-AR')+'</span>';
     return '<div class="plan-edit-row">'
       +'<div><div class="plan-edit-name">'+k+'</div>'
@@ -2982,6 +2987,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
