@@ -672,6 +672,35 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
         <button class="fin-tab" onclick="setFinPeriod('semana',this)">Esta semana</button>
         <button class="fin-tab" onclick="setFinPeriod('mes',this)">Este mes</button>
         <button class="fin-tab" onclick="setFinPeriod('todo',this)">Todo</button>
+        <button class="fin-tab" onclick="setFinPeriod('rango',this)">Rango</button>
+      </div>
+      <!-- Filtros avanzados -->
+      <div id="fin-filtros" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;align-items:center;">
+        <div id="fin-rango-dates" style="display:none;gap:8px;align-items:center;">
+          <input type="date" id="fin-fecha-desde" class="fsel" style="width:auto;font-size:12px;" onchange="renderFinanciero()">
+          <span style="font-size:12px;color:var(--muted);">hasta</span>
+          <input type="date" id="fin-fecha-hasta" class="fsel" style="width:auto;font-size:12px;" onchange="renderFinanciero()">
+        </div>
+        <select id="fin-filtro-sede" class="fsel" style="width:auto;font-size:12px;" onchange="renderFinanciero()">
+          <option value="">Todas las sedes</option>
+          <option value="Amarras">Amarras</option>
+          <option value="Centro">Centro</option>
+          <option value="Faro">Faro</option>
+          <option value="Multisede">Multisede</option>
+        </select>
+        <select id="fin-filtro-plan" class="fsel" style="width:auto;font-size:12px;" onchange="renderFinanciero()">
+          <option value="">Todos los planes</option>
+        </select>
+        <select id="fin-filtro-metodo" class="fsel" style="width:auto;font-size:12px;" onchange="renderFinanciero()">
+          <option value="">Todos los métodos</option>
+          <option value="Transferencia">Transferencia</option>
+          <option value="Efectivo">Efectivo</option>
+          <option value="Débito automático">Débito automático</option>
+          <option value="Tarjeta crédito">Tarjeta crédito</option>
+          <option value="Tarjeta débito">Tarjeta débito</option>
+          <option value="Mercado Pago">Mercado Pago</option>
+        </select>
+        <button class="btn btn-o btn-sm" onclick="finLimpiarFiltros()" style="font-size:11px;">✕ Limpiar</button>
       </div>
       <div class="fin-summary ao" id="fin-summary"></div>
       <div class="tw">
@@ -892,58 +921,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
               <option>Tarjeta débito</option><option>Mercado Pago</option><option>Débito automático</option>
             </select>
           </div>
-          <div class="fgrp"><label>Fecha</label><input id="tx-fecha" type="date" required></div>
-          <div class="fgrp"><label>Sede</label>
-            <select id="tx-sede"><option>Amarras</option><option>Centro</option><option>Faro</option></select>
-          </div>
-        </div>
-      </div>
-      <div class="mft">
-        <button type="button" class="btn btn-o" onclick="document.getElementById('tx-ov').classList.remove('open')">Cancelar</button>
-        <button type="submit" class="btn btn-p">Guardar ingreso</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<!-- SLOT DETAIL MODAL -->
-<div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:420px;">
-    <div class="mhd">
-      <div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div>
-      <button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button>
-    </div>
-    <div id="slot-content"></div>
-  </div>
-</div>
-
-<!-- CHECKIN MODAL -->
-<div class="ov" id="ci-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal">
-    <div class="mhd">
-      <div><div class="mt" id="ci-title">Check-in</div><div class="ms" id="ci-sub"></div></div>
-      <button class="cbtn" onclick="document.getElementById('ci-ov').classList.remove('open')">✕</button>
-    </div>
-    <div id="ci-content"></div>
-    <div class="mft"><button class="btn btn-p" onclick="saveCheckin()">✓ Guardar asistencias</button></div>
-  </div>
-</div>
-
-<div class="dp" id="dp">
-  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
-    <div style="font-size:8.5px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);">FICHA CLIENTE</div>
-    <button class="cbtn" onclick="closeDetail()">✕</button>
-  </div>
-  
-
-
-<div id="dp-content"></div>
-</div>
-
-<div class="toast" id="toast"><span></span></div>
-
-
-<script>
+          <div class="fgrp"><label>Fe<script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
   authDomain: "soma-wellness-8c891.firebaseapp.com",
@@ -1445,6 +1423,19 @@ function getDateRange(period){
 }
 function filterTxByPeriod(period,txArr){
   if(period==='todo')return txArr;
+  if(period==='rango'){
+    const desde = document.getElementById('fin-fecha-desde');
+    const hasta = document.getElementById('fin-fecha-hasta');
+    const d = desde&&desde.value ? new Date(desde.value+'T00:00:00') : null;
+    const h = hasta&&hasta.value ? new Date(hasta.value+'T23:59:59') : null;
+    return txArr.filter(function(tx){
+      if(!tx.fecha) return false;
+      const txD = new Date(tx.fecha+'T12:00:00');
+      if(d && txD < d) return false;
+      if(h && txD > h) return false;
+      return true;
+    });
+  }
   const{from,to}=getDateRange(period);
   return txArr.filter(tx=>{if(!tx.fecha)return false;const d=new Date(tx.fecha+'T00:00:00');return d>=from&&d<=to;});
 }
@@ -2142,45 +2133,89 @@ function openCheckin(key,sede,dia,hora,actividad){
 // FINANCIERO — asegurar que transacciones se muestren
 // ═══════════════════════════════════════════════════════════════
 function renderFinanciero(){
-  const labels = {dia:'hoy',semana:'esta semana',mes:'este mes',todo:'total acumulado'};
-  document.getElementById('fin-period-label').textContent = 'Ingresos de '+labels[finPeriod];
-  console.log('renderFinanciero: allTx=', allTx.length, 'period=', finPeriod);
-  const filtered = filterTxByPeriod(finPeriod, allTx);
-  console.log('filtered:', filtered.length);
+  // Sync student payments if no real transactions
+  if(allTx.length === 0 && students.length > 0) syncStudentPaymentsToTx();
+
+  // Populate plan filter if empty
+  const planSel = document.getElementById('fin-filtro-plan');
+  if(planSel && planSel.options.length <= 1){
+    Object.keys(PLANES).forEach(function(k){
+      const opt = document.createElement('option');
+      opt.value = k; opt.textContent = k;
+      planSel.appendChild(opt);
+    });
+  }
+
+  // Show/hide date range inputs
+  const rangoDiv = document.getElementById('fin-rango-dates');
+  if(rangoDiv) rangoDiv.style.display = finPeriod==='rango' ? 'flex' : 'none';
+
+  const labels = {dia:'hoy',semana:'esta semana',mes:'este mes',todo:'total acumulado',rango:'rango seleccionado'};
+  const labelEl = document.getElementById('fin-period-label');
+  if(labelEl) labelEl.textContent = 'Ingresos de '+(labels[finPeriod]||finPeriod);
+
+  // Apply period filter
+  let filtered = filterTxByPeriod(finPeriod, allTx);
+
+  // Apply sede filter
+  const sedeFilt = (document.getElementById('fin-filtro-sede')||{}).value || '';
+  if(sedeFilt) filtered = filtered.filter(function(tx){ return (tx.sede||'')=== sedeFilt; });
+
+  // Apply plan filter
+  const planFilt = (document.getElementById('fin-filtro-plan')||{}).value || '';
+  if(planFilt) filtered = filtered.filter(function(tx){ return (tx.descripcion||tx.plan||'')===planFilt; });
+
+  // Apply método filter
+  const metFilt = (document.getElementById('fin-filtro-metodo')||{}).value || '';
+  if(metFilt) filtered = filtered.filter(function(tx){ return (tx.metodo||'')===metFilt; });
+
+  // Apply search filter
   const searchFiltered = currentTxFilter
-    ? filtered.filter(tx=>(tx.clienteNombre||tx.descripcion||tx.concepto||'').toLowerCase().includes(currentTxFilter.toLowerCase()))
+    ? filtered.filter(function(tx){ return (tx.clienteNombre||tx.descripcion||tx.concepto||'').toLowerCase().includes(currentTxFilter.toLowerCase()); })
     : filtered;
-  const totalIngresos = filtered.reduce((a,tx)=>a+(tx.monto||0),0);
-  const totalEfectivo = filtered.filter(tx=>tx.metodo==='Efectivo').reduce((a,tx)=>a+(tx.monto||0),0);
-  const totalDigital  = filtered.filter(tx=>tx.metodo!=='Efectivo').reduce((a,tx)=>a+(tx.monto||0),0);
+
+  const totalIngresos = filtered.reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  const totalEfectivo = filtered.filter(function(tx){ return tx.metodo==='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  const totalDigital  = filtered.filter(function(tx){ return tx.metodo!=='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+
   const summEl = document.getElementById('fin-summary');
   if(summEl){
     summEl.style.display = (cu&&cu.role==='admin')?'grid':'none';
     summEl.innerHTML =
-      `<div class="fin-item"><div class="fin-label">Total ingresos</div><div class="fin-value">${fmtM(totalIngresos)}</div><div class="fin-sub">${filtered.length} transacción${filtered.length!==1?'es':''}</div></div>`
-      +`<div class="fin-item"><div class="fin-label">Efectivo</div><div class="fin-value">${fmtM(totalEfectivo)}</div><div class="fin-sub">${filtered.filter(tx=>tx.metodo==='Efectivo').length} cobros</div></div>`
-      +`<div class="fin-item"><div class="fin-label">Digital</div><div class="fin-value">${fmtM(totalDigital)}</div><div class="fin-sub">Transf., débito, tarjeta, MP</div></div>`;
+      '<div class="fin-item"><div class="fin-label">Total ingresos</div><div class="fin-value">'+fmtM(totalIngresos)+'</div><div class="fin-sub">'+filtered.length+' transacción'+(filtered.length!==1?'es':'')+'</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Efectivo</div><div class="fin-value">'+fmtM(totalEfectivo)+'</div><div class="fin-sub">'+filtered.filter(function(tx){return tx.metodo==='Efectivo';}).length+' cobros</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Digital</div><div class="fin-value">'+fmtM(totalDigital)+'</div><div class="fin-sub">Transf., débito, tarjeta, MP</div></div>';
   }
-  const metIco = {Efectivo:'💵',Transferencia:'🏦','Débito automático':'🔄','Tarjeta crédito':'💳','Tarjeta débito':'💳','Mercado Pago':'📱'};
-  const concIco = {inscripcion:'⭐',renovacion:'🔄',clase_suelta:'🎯',otro:'📝'};
+
+  const metIco = {Efectivo:'💵',Transferencia:'🏦','Débito automático':'🔄','Tarjeta crédito':'💳','Tarjeta débito':'💳','Mercado Pago':'📱','Sin especificar':'❓'};
   const txHTML = searchFiltered.length===0
-    ? '<div style="text-align:center;padding:40px;color:var(--muted);">No hay transacciones para este período.</div>'
-    : searchFiltered.map((tx,i)=>
-        `<div class="tx-row">
-          <div class="tx-ico" style="background:${gc(i)}15;color:${gc(i)};">${metIco[tx.metodo]||concIco[tx.concepto]||'💰'}</div>
-          <div style="flex:1;">
-            <div class="tx-name">${tx.clienteNombre||(tx.concepto==='inscripcion'?'Inscripción':tx.concepto==='renovacion'?'Renovación':tx.concepto==='clase_suelta'?'Clase suelta':'Ingreso')}</div>
-            <div class="tx-detail">${tx.descripcion||'—'} · ${tx.metodo} · ${tx.sede||'—'}</div>
-          </div>
-          <div style="text-align:right;flex-shrink:0;">
-            <div class="tx-amount">${fmtM(tx.monto)}</div>
-            <div class="tx-date">${fmtD(tx.fecha)}</div>
-          </div>
-          <button class="ibt dl" onclick="deleteTx('${tx.id}')" style="margin-left:8px;">✕</button>
-        </div>`
-      ).join('');
+    ? '<div style="text-align:center;padding:40px;color:var(--muted);">No hay transacciones para este filtro.</div>'
+    : searchFiltered.map(function(tx,i){
+        const isSynth = tx._synthetic;
+        return '<div class="tx-row">'
+          +'<div class="tx-ico" style="background:'+gc(i)+'15;color:'+gc(i)+';">'+(metIco[tx.metodo]||'💰')+'</div>'
+          +'<div style="flex:1;">'
+          +'<div class="tx-name">'+(tx.clienteNombre||(tx.concepto==='inscripcion'?'Inscripción':tx.concepto==='renovacion'?'Renovación':'Ingreso'))+'</div>'
+          +'<div class="tx-detail">'+(tx.descripcion||'—')+' · '+(tx.metodo||'—')+' · '+(tx.sede||'—')+'</div>'
+          +'</div>'
+          +'<div style="text-align:right;flex-shrink:0;">'
+          +'<div class="tx-amount">'+fmtM(tx.monto)+'</div>'
+          +'<div class="tx-date">'+fmtD(tx.fecha)+'</div>'
+          +'</div>'
+          +(!isSynth ? '<button class="ibt dl" data-id="'+tx.id+'" onclick="deleteTx(this.dataset.id)" style="margin-left:8px;">✕</button>' : '')
+          +'</div>';
+      }).join('');
+
   const listEl = document.getElementById('tx-list');
   if(listEl) listEl.innerHTML = '<div style="background:var(--warm);">'+txHTML+'</div>';
+}
+
+function finLimpiarFiltros(){
+  ['fin-filtro-sede','fin-filtro-plan','fin-filtro-metodo'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  renderFinanciero();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3088,6 +3123,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
