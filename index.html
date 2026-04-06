@@ -455,6 +455,27 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
 </div>
+
+<!-- MODAL CHECKIN ASISTENCIA -->
+<div class="ov" id="ci-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:500px;">
+    <div class="mhd">
+      <div>
+        <div class="mt" id="ci-title">Clase</div>
+        <div class="ms" id="ci-sub"></div>
+      </div>
+      <button class="ibt cl" onclick="document.getElementById('ci-ov').classList.remove('open')">✕</button>
+    </div>
+    <div id="ci-content" style="max-height:55vh;overflow-y:auto;margin-bottom:16px;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="font-size:12px;color:var(--muted);" id="ci-checked-count">0 marcados</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-o btn-sm" onclick="ciMarkAll()">Marcar todos</button>
+        <button class="btn btn-p btn-sm" onclick="saveCheckin()">Guardar asistencia</button>
+      </div>
+    </div>
+  </div>
+</div>
 <div class="ov" id="renov-ov" onclick="if(event.target===this)this.classList.remove('open')">
   <div class="modal" style="width:520px;">
     <div class="mhd"><div><div class="mt">Renovar Plan</div><div class="ms" id="renov-sub"></div></div><button class="cbtn" onclick="document.getElementById('renov-ov').classList.remove('open')">✕</button></div>
@@ -2137,10 +2158,7 @@ function openCheckin(key,sede,dia,hora,actividad){
       ${s.lesiones?'<div style="font-size:10.5px;color:var(--err);">⚠ '+s.lesiones+'</div>':''}</div>
       <span class="cred-pill">◉ ${s.creditos}</span></div>`
   ).join('');
-  const ovEl = document.getElementById('ci-ov');
-  console.log('ci-ov element:', ovEl, 'students:', ciSlotStudents.length);
-  if(ovEl) ovEl.classList.add('open');
-  else console.error('ci-ov NOT FOUND IN DOM');
+  document.getElementById('ci-ov').classList.add('open');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3141,6 +3159,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
