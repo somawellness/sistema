@@ -2287,8 +2287,12 @@ async function saveStudent(e){
       showToast(d.nombre+' '+d.apellido+' inscripto/a ✓');
     }
     closeModalD();
-  }catch(err){ showToast('Error: '+err.message,'⚠'); }
-  sbtn.textContent='Guardar'; sbtn.disabled=false;
+  }catch(err){ 
+    showToast('Error: '+err.message,'⚠');
+  }finally{
+    const sb2 = document.getElementById('sbtn');
+    if(sb2){ sb2.textContent='Guardar cambios'; sb2.disabled=false; }
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3123,6 +3127,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
