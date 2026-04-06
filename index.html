@@ -1183,10 +1183,17 @@ async function initFirebase(){
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
-      allTx=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      const loaded = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
+      if(loaded.length > 0){
+        allTx = loaded;
+      } else {
+        // No real transactions - use student payment data
+        syncStudentPaymentsToTx();
+        return;
+      }
       const a=document.querySelector('.view.active');
       if(a&&cu&&a.id==='view-financiero')renderFinanciero();
-    },()=>{});
+    },()=>{ syncStudentPaymentsToTx(); });
 
     setSyncStatus(true);
 
@@ -2782,7 +2789,7 @@ async function renderSolicitudes(){
         const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo] || sol.tipo || '—';
         const globalIdx = docs.indexOf(sol);
         const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
-        h += '<div class="tx-row" style="display:grid;grid-template-columns:40px 1fr auto auto auto;gap:12px;align-items:center;padding:14px 16px;">';
+        h += '<div class="tx-row" style="gap:12px;padding:14px 16px;">';
         h += '<div class="av" style="width:36px;height:36px;font-size:13px;background:rgba(74,103,65,.12);color:var(--sage-d);">'+initials+'</div>';
         h += '<div>'
           + '<div style="font-weight:600;font-size:14px;">'+(sol.clienteNombre||'—')+'</div>'
@@ -2809,7 +2816,7 @@ async function renderSolicitudes(){
         const tipoLabel = {renovacion:'Renovación',confirmar_pago:'Confirmar pago',cambio_plan:'Cambio de plan',cambio_turno_unico:'Cambio turno única vez'}[sol.tipo] || sol.tipo || '—';
         const badgeClass = sol.estado==='aprobado' ? 'b-ok' : sol.estado==='rechazado' ? 'b-err' : 'b-warn';
         const initials = (sol.clienteNombre||'?').split(' ').map(function(n){return n[0]||'';}).join('').substring(0,2).toUpperCase();
-        h += '<div class="tx-row" style="display:grid;grid-template-columns:40px 1fr auto;gap:12px;align-items:center;padding:10px 16px;">';
+        h += '<div class="tx-row" style="gap:12px;padding:10px 16px;">';
         h += '<div class="av" style="width:30px;height:30px;font-size:11px;background:rgba(74,103,65,.08);color:var(--sage-d);">'+initials+'</div>';
         h += '<div>'
           + '<div style="font-weight:500;font-size:13px;">'+(sol.clienteNombre||'—')+'</div>'
@@ -3075,6 +3082,9 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
+
 
 
 
