@@ -2336,6 +2336,7 @@ async function saveStudent(e){
       const sedeVal2 = document.getElementById('f-sede').value;
       const isMulti2 = sedeVal2 === 'Multisede';
       const parts2 = [];
+      console.log('saveStudent: n2=',n2,'_slotState=',JSON.stringify(_slotState));
       for(let i=0; i<n2; i++){
         const sedeEl = document.getElementById('slot-sede-'+i);
         const actEl  = document.getElementById('slot-act-'+i);
@@ -2354,6 +2355,7 @@ async function saveStudent(e){
         const sedePrefix2 = isMulti2 && sede2 ? sede2+' ' : '';
         parts2.push(sedePrefix2+actPrefix2+slotStr2);
       }
+      console.log('saveStudent horarios parts:', parts2, 'f-hor:', document.getElementById('f-hor').value);
       return parts2.length > 0 ? parts2.join(' / ') : document.getElementById('f-hor').value.trim();
     })(),
     metodo:    document.getElementById('f-met').value,
@@ -2395,7 +2397,7 @@ async function saveStudent(e){
         const mesStr = mes.charAt(0).toUpperCase()+mes.slice(1);
         const sedeLabel = sedeVal==='Multisede'?' (Multisede)':'';
         await db.collection('transactions').add({
-          cobrado: true,
+          cobrado: (d.ep==='Al día'||d.ep==='Al dia'),
           concepto:      'inscripcion',
           clienteId:     ref.id,
           clienteNombre: d.nombre+' '+d.apellido,
@@ -3284,6 +3286,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
