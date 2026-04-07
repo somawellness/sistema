@@ -2223,10 +2223,9 @@ function openCheckin(key,sede,dia,hora,actividad){
 // FINANCIERO — asegurar que transacciones se muestren
 // ═══════════════════════════════════════════════════════════════
 function renderFinanciero(){
-  // Sync student payments if no real transactions
   if(allTx.length === 0 && students.length > 0) syncStudentPaymentsToTx();
 
-  // Populate plan filter if empty
+  // Populate plan filter
   const planSel = document.getElementById('fin-filtro-plan');
   if(planSel && planSel.options.length <= 1){
     Object.keys(PLANES).forEach(function(k){
@@ -2236,7 +2235,7 @@ function renderFinanciero(){
     });
   }
 
-  // Show/hide date range inputs
+  // Show/hide date range
   const rangoDiv = document.getElementById('fin-rango-dates');
   if(rangoDiv) rangoDiv.style.display = finPeriod==='rango' ? 'flex' : 'none';
 
@@ -2244,57 +2243,71 @@ function renderFinanciero(){
   const labelEl = document.getElementById('fin-period-label');
   if(labelEl) labelEl.textContent = 'Ingresos de '+(labels[finPeriod]||finPeriod);
 
-  // Apply period filter
+  // Apply filters
   let filtered = filterTxByPeriod(finPeriod, allTx);
-
-  // Apply sede filter
-  const sedeFilt = (document.getElementById('fin-filtro-sede')||{}).value || '';
+  const sedeFilt  = (document.getElementById('fin-filtro-sede')||{}).value   || '';
+  const planFilt  = (document.getElementById('fin-filtro-plan')||{}).value   || '';
+  const metFilt   = (document.getElementById('fin-filtro-metodo')||{}).value || '';
   if(sedeFilt) filtered = filtered.filter(function(tx){ return (tx.sede||'')=== sedeFilt; });
-
-  // Apply plan filter
-  const planFilt = (document.getElementById('fin-filtro-plan')||{}).value || '';
-  if(planFilt) filtered = filtered.filter(function(tx){ return (tx.descripcion||tx.plan||'')===planFilt; });
-
-  // Apply método filter
-  const metFilt = (document.getElementById('fin-filtro-metodo')||{}).value || '';
-  if(metFilt) filtered = filtered.filter(function(tx){ return (tx.metodo||'')===metFilt; });
-
-  // Apply search filter
+  if(planFilt) filtered = filtered.filter(function(tx){ return (tx.descripcion||'')===planFilt; });
+  if(metFilt)  filtered = filtered.filter(function(tx){ return (tx.metodo||'')===metFilt; });
   const searchFiltered = currentTxFilter
-    ? filtered.filter(function(tx){ return (tx.clienteNombre||tx.descripcion||tx.concepto||'').toLowerCase().includes(currentTxFilter.toLowerCase()); })
+    ? filtered.filter(function(tx){ return (tx.clienteNombre||tx.descripcion||'').toLowerCase().includes(currentTxFilter.toLowerCase()); })
     : filtered;
 
-  const totalIngresos = filtered.reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
-  const totalEfectivo = filtered.filter(function(tx){ return tx.metodo==='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
-  const totalDigital  = filtered.filter(function(tx){ return tx.metodo!=='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  // Split cobradas vs pendientes
+  const cobradas  = searchFiltered.filter(function(tx){ return tx.cobrado!==false && tx.ep!=='Pendiente'; });
+  const pendientes = searchFiltered.filter(function(tx){ return tx.cobrado===false || tx.ep==='Pendiente'; });
+
+  // Summary uses only cobradas
+  const totalCobrado  = cobradas.reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  const totalPendiente = pendientes.reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  const totalEfectivo = cobradas.filter(function(tx){ return tx.metodo==='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
+  const totalDigital  = cobradas.filter(function(tx){ return tx.metodo!=='Efectivo'; }).reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
 
   const summEl = document.getElementById('fin-summary');
   if(summEl){
     summEl.style.display = (cu&&cu.role==='admin')?'grid':'none';
     summEl.innerHTML =
-      '<div class="fin-item"><div class="fin-label">Total ingresos</div><div class="fin-value">'+fmtM(totalIngresos)+'</div><div class="fin-sub">'+filtered.length+' transacción'+(filtered.length!==1?'es':'')+'</div></div>'
-      +'<div class="fin-item"><div class="fin-label">Efectivo</div><div class="fin-value">'+fmtM(totalEfectivo)+'</div><div class="fin-sub">'+filtered.filter(function(tx){return tx.metodo==='Efectivo';}).length+' cobros</div></div>'
+      '<div class="fin-item"><div class="fin-label">Cobrado</div><div class="fin-value">'+fmtM(totalCobrado)+'</div><div class="fin-sub">'+cobradas.length+' transacción'+(cobradas.length!==1?'es':'')+'</div></div>'
+      +'<div class="fin-item" style="border-left:3px solid var(--err);"><div class="fin-label" style="color:var(--err);">Pendiente de cobro</div><div class="fin-value" style="color:var(--err);">'+fmtM(totalPendiente)+'</div><div class="fin-sub">'+pendientes.length+' cliente'+(pendientes.length!==1?'s':'')+'</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Efectivo</div><div class="fin-value">'+fmtM(totalEfectivo)+'</div><div class="fin-sub">'+cobradas.filter(function(tx){return tx.metodo==='Efectivo';}).length+' cobros</div></div>'
       +'<div class="fin-item"><div class="fin-label">Digital</div><div class="fin-value">'+fmtM(totalDigital)+'</div><div class="fin-sub">Transf., débito, tarjeta, MP</div></div>';
   }
 
   const metIco = {Efectivo:'💵',Transferencia:'🏦','Débito automático':'🔄','Tarjeta crédito':'💳','Tarjeta débito':'💳','Mercado Pago':'📱','Sin especificar':'❓'};
-  const txHTML = searchFiltered.length===0
-    ? '<div style="text-align:center;padding:40px;color:var(--muted);">No hay transacciones para este filtro.</div>'
-    : searchFiltered.map(function(tx,i){
-        const isSynth = tx._synthetic;
-        return '<div class="tx-row">'
-          +'<div class="tx-ico" style="background:'+gc(i)+'15;color:'+gc(i)+';">'+(metIco[tx.metodo]||'💰')+'</div>'
-          +'<div style="flex:1;">'
-          +'<div class="tx-name">'+(tx.clienteNombre||(tx.concepto==='inscripcion'?'Inscripción':tx.concepto==='renovacion'?'Renovación':'Ingreso'))+'</div>'
-          +'<div class="tx-detail">'+(tx.descripcion||'—')+' · '+(tx.metodo||'—')+' · '+(tx.sede||'—')+'</div>'
-          +'</div>'
-          +'<div style="text-align:right;flex-shrink:0;">'
-          +'<div class="tx-amount">'+fmtM(tx.monto)+'</div>'
-          +'<div class="tx-date">'+fmtD(tx.fecha)+'</div>'
-          +'</div>'
-          +(!isSynth ? '<button class="ibt dl" data-id="'+tx.id+'" onclick="deleteTx(this.dataset.id)" style="margin-left:8px;">✕</button>' : '')
-          +'</div>';
-      }).join('');
+
+  function txRow(tx, i){
+    const isSynth = tx._synthetic;
+    return '<div class="tx-row">'
+      +'<div class="tx-ico" style="background:'+gc(i)+'15;color:'+gc(i)+';">'+(metIco[tx.metodo]||'💰')+'</div>'
+      +'<div style="flex:1;">'
+      +'<div class="tx-name">'+(tx.clienteNombre||'Ingreso')+'</div>'
+      +'<div class="tx-detail">'+(tx.descripcion||'—')+' · '+(tx.metodo||'—')+' · '+(tx.sede||'—')+'</div>'
+      +'</div>'
+      +'<div style="text-align:right;flex-shrink:0;">'
+      +'<div class="tx-amount">'+fmtM(tx.monto)+'</div>'
+      +'<div class="tx-date">'+fmtD(tx.fecha)+'</div>'
+      +'</div>'
+      +(!isSynth ? '<button class="ibt dl" data-id="'+tx.id+'" onclick="deleteTx(this.dataset.id)" style="margin-left:8px;">✕</button>' : '')
+      +'</div>';
+  }
+
+  let txHTML = '';
+
+  if(cobradas.length > 0){
+    txHTML += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--sage-d);text-transform:uppercase;border-bottom:1px solid var(--border);">COBRADAS ('+cobradas.length+')</div>';
+    txHTML += cobradas.map(function(tx,i){ return txRow(tx,i); }).join('');
+  }
+
+  if(pendientes.length > 0){
+    txHTML += '<div style="padding:10px 16px 6px;font-size:10px;font-weight:600;letter-spacing:1.5px;color:var(--err);text-transform:uppercase;border-bottom:1px solid var(--border);margin-top:8px;">PENDIENTES DE COBRO ('+pendientes.length+')</div>';
+    txHTML += pendientes.map(function(tx,i){ return txRow(tx, cobradas.length+i); }).join('');
+  }
+
+  if(!txHTML){
+    txHTML = '<div style="text-align:center;padding:40px;color:var(--muted);">No hay transacciones para este filtro.</div>';
+  }
 
   const listEl = document.getElementById('tx-list');
   if(listEl) listEl.innerHTML = '<div style="background:var(--warm);">'+txHTML+'</div>';
@@ -2336,7 +2349,34 @@ async function saveStudent(e){
     plan:      planKey,
     creditos:  parseInt(document.getElementById('f-cred').value)||0,
     inicio:    document.getElementById('f-ini').value,
-    horarios:  document.getElementById('f-hor').value.trim(),
+    horarios:  (function(){
+      // Force sync _slotState from current dropdown values before saving
+      const planKey2 = document.getElementById('f-plan').value;
+      const p2 = PLANES[planKey2];
+      const n2 = p2 ? p2.dias : 1;
+      const sedeVal2 = document.getElementById('f-sede').value;
+      const isMulti2 = sedeVal2 === 'Multisede';
+      const parts2 = [];
+      for(let i=0; i<n2; i++){
+        const sedeEl = document.getElementById('slot-sede-'+i);
+        const actEl  = document.getElementById('slot-act-'+i);
+        const diaEl  = document.getElementById('slot-dia-'+i);
+        const horaEl = document.getElementById('slot-hora-'+i);
+        const sede2  = isMulti2 ? (sedeEl&&sedeEl.value||'') : sedeVal2;
+        const act2   = actEl ? actEl.value : '';
+        const dia2   = diaEl ? diaEl.value : '';
+        const hora2  = horaEl ? horaEl.value : '';
+        if(!dia2 || !hora2) continue;
+        const h2  = hora2.replace(':00','');
+        const dl2 = dia2.substring(0,3);
+        const slotStr2 = dl2+' '+h2+'hs';
+        const acts2 = ACTIVIDADES_SEDE[isMulti2?(sede2||'Amarras'):sedeVal2]||['Pilates Reformer'];
+        const actPrefix2 = (acts2.length>1 && act2) ? act2+': ' : '';
+        const sedePrefix2 = isMulti2 && sede2 ? sede2+' ' : '';
+        parts2.push(sedePrefix2+actPrefix2+slotStr2);
+      }
+      return parts2.length > 0 ? parts2.join(' / ') : document.getElementById('f-hor').value.trim();
+    })(),
     metodo:    document.getElementById('f-met').value,
     monto:     parseFloat(document.getElementById('f-monto').value)||0,
     ep:        document.getElementById('f-ep').value,
@@ -2352,6 +2392,19 @@ async function saveStudent(e){
       if(ex) d.att = ex.att||[0,0,0,0,0,0];
       await db.collection('students').doc(editId).update(d);
       showToast(d.nombre+' actualizado/a ✓');
+      // Update name in allTx (financiero) if name changed
+      if(ex && (ex.nombre !== d.nombre || ex.apellido !== d.apellido)){
+        const oldName = (ex.nombre||'')+' '+(ex.apellido||'');
+        const newName = d.nombre+' '+d.apellido;
+        allTx = allTx.map(function(tx){
+          return tx.clienteNombre===oldName ? {...tx, clienteNombre:newName} : tx;
+        });
+        // Also update transactions collection
+        const txSnap = await db.collection('transactions').where('clienteId','==',editId).get();
+        const batch2 = db.batch();
+        txSnap.docs.forEach(function(tdoc){ batch2.update(tdoc.ref, {clienteNombre:newName}); });
+        if(!txSnap.empty) await batch2.commit();
+      }
     } else {
       d.att = [0,0,0,0,0,0];
       const ref = await db.collection('students').add(d);
@@ -2363,6 +2416,7 @@ async function saveStudent(e){
         const mesStr = mes.charAt(0).toUpperCase()+mes.slice(1);
         const sedeLabel = sedeVal==='Multisede'?' (Multisede)':'';
         await db.collection('transactions').add({
+          cobrado: true,
           concepto:      'inscripcion',
           clienteId:     ref.id,
           clienteNombre: d.nombre+' '+d.apellido,
@@ -3160,6 +3214,7 @@ function syncStudentPaymentsToTx(){
   students.forEach(function(s){
     const monto = parseFloat(s.monto) || 0;
     if(monto <= 0) return;
+    const alDia = (s.ep==='Al día'||s.ep==='Al dia');
     synth.push({
       id: 'student_'+s.id,
       clienteNombre: (s.nombre||'')+' '+(s.apellido||''),
@@ -3169,6 +3224,7 @@ function syncStudentPaymentsToTx(){
       fecha: s.inicio || new Date().toISOString().split('T')[0],
       sede: s.sede || '',
       descripcion: s.plan || '',
+      cobrado: alDia,
       _synthetic: true
     });
   });
@@ -3209,6 +3265,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
