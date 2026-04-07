@@ -464,7 +464,8 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
         <div class="mt" id="ci-title">Clase</div>
         <div class="ms" id="ci-sub"></div>
       </div>
-      <button class="ibt cl" onclick="document.getElementById('ci-ov').classList.remove('open')">✕</button>
+      <button class="ibt cl" onclick="document.getElementById('ci-ov').classList.remove('open')" style="font-size:18px;">✕</button>
+      <button class="ibt cl" style="display:none;" onclick="document.getElementById('ci-ov').classList.remove('open')">✕</button>
     </div>
     <div id="ci-content" style="max-height:55vh;overflow-y:auto;margin-bottom:16px;"></div>
     <div style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
@@ -970,6 +971,9 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
 
 <!-- DETAIL PANEL -->
 <div class="dp" id="dp">
+  <div style="display:flex;justify-content:flex-end;padding:12px 16px 0;">
+    <button onclick="closeDetail()" style="background:none;border:1px solid var(--border);border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:16px;color:var(--muted);">✕</button>
+  </div>
   <div id="dp-content"></div>
 </div>
 
@@ -986,15 +990,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     <div id="import-result" style="max-height:200px;overflow-y:auto;font-size:12px;margin-bottom:12px;"></div>
     <div id="import-confirm" style="display:none;">
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Revisá los datos antes de confirmar.</div>
-      <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <button class="btn btn-o btn-sm" onclick="document.getElementById('import-ov').classList.remove('open')">Cancelar</button>
-        <button class="btn btn-p btn-sm" onclick="confirmImport()">Confirmar importación</button>
-      </div>
-    </div>
-    <button class="btn btn-p" onclick="previewImport()" style="width:100%;">Vista previa</button>
-  </div>
-</div>
-
+<div id="f-actividad-wrap" style="display:none!important;position:absolute;"><select id="f-actividad"></select></div>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
@@ -1223,6 +1219,16 @@ async function initFirebase(){
       setSyncStatus(true);
       updatePendBadge();
       checkSolicitudes();
+      // Re-sync transactions with updated ep values
+      if(allTx.length > 0){
+        var txIds2 = {}; allTx.forEach(function(tx){ if(tx.clienteId) txIds2[tx.clienteId]=true; });
+        allTx = allTx.map(function(tx){
+          if(!tx._synthetic) return tx;
+          var s2 = students.find(function(s){ return 'student_'+s.id === tx.id; });
+          if(s2) tx.cobrado = (s2.ep==='Al día'||s2.ep==='Al dia'||s2.ep==='Vencido');
+          return tx;
+        });
+      }
       const a=document.querySelector('.view.active');
       if(a&&cu){const v=a.id.replace('view-','');
         ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,
@@ -1230,11 +1236,37 @@ async function initFirebase(){
           financiero:renderFinanciero,vencimientos:renderVencimientos,solicitudes:renderSolicitudes}[v]||function(){})();}
     },()=>setSyncStatus(false));
 
-    db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
-      allTx=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      const a=document.querySelector('.view.active');
+    db.collection('transactions').orderBy('fecha','desc').onSnapshot(function(snap){
+      // Mark all real transactions as cobrado:true
+      allTx = snap.docs.map(function(doc){
+        var d = Object.assign({id:doc.id}, doc.data());
+        if(d.cobrado === undefined) d.cobrado = true;
+        return d;
+      });
+      if(allTx.length === 0) syncStudentPaymentsToTx();
+      else {
+        // Add synthetic for students not in real transactions
+        var txClientIds = {};
+        allTx.forEach(function(tx){ if(tx.clienteId) txClientIds[tx.clienteId]=true; });
+        students.forEach(function(s){
+          if(txClientIds[s.id]) return;
+          var monto = parseFloat(s.monto)||0;
+          if(monto <= 0) return;
+          allTx.push({
+            id:'student_'+s.id,
+            clienteNombre:(s.nombre||'')+' '+(s.apellido||''),
+            monto:monto, metodo:s.metodo||'Sin especificar',
+            concepto:'inscripcion',
+            fecha:s.inicio||new Date().toISOString().split('T')[0],
+            sede:s.sede||'', descripcion:s.plan||'',
+            cobrado:(s.ep==='Al día'||s.ep==='Al dia'||s.ep==='Vencido'),
+            _synthetic:true
+          });
+        });
+      }
+      var a=document.querySelector('.view.active');
       if(a&&cu&&a.id==='view-financiero')renderFinanciero();
-    },()=>{});
+    },function(){ syncStudentPaymentsToTx(); });
 
     setSyncStatus(true);
 
@@ -3176,7 +3208,7 @@ function syncStudentPaymentsToTx(){
   allTx = synth;
   var a = document.querySelector('.view.active');
   if(a && a.id === 'view-financiero') renderFinanciero();
-
+}
 
 function restoreSlotSelections(s){
   Object.keys(_slotState).forEach(function(key){
@@ -3208,28 +3240,6 @@ function restoreSlotSelections(s){
   });
   _updateHorarioHiddenFromState();
 }
-
-    // Rebuild dias for this actividad and set
-    if(diaEl){
-      const sede2 = (sedeEl&&sedeEl.value) || (s&&s.sede) || 'Amarras';
-      const act2  = (actEl&&actEl.value)   || row.actividad || '';
-      const dias2 = getDiasForSedeAct(sede2, act2);
-      diaEl.innerHTML = '<option value="">— Día —</option>' +
-        dias2.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
-      if(row.dia) diaEl.value = row.dia;
-    }
-
-    // Rebuild horas for this dia and set
-    if(horaEl && diaEl){
-      const sede2  = (sedeEl&&sedeEl.value) || (s&&s.sede) || 'Amarras';
-      const act2   = (actEl&&actEl.value)   || row.actividad || '';
-      const dia2   = diaEl.value;
-      const slots2 = getSlotsForSedeActDia(sede2, act2, dia2);
-      horaEl.innerHTML = '<option value="">— Horario —</option>' +
-        slots2.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
-      if(row.hora) horaEl.value = row.hora;
-    }
-  }
 
 function finLimpiarFiltros(){
   ['fin-filtro-sede','fin-filtro-plan','fin-filtro-metodo'].forEach(function(id){
@@ -3274,6 +3284,9 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
+
 
 
 
