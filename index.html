@@ -3126,6 +3126,7 @@ async function crearAccesoPortal(studentId){
 
 
 function parseHorariosToSlotState(horStr, sede){
+  console.log("PARSE horStr=", JSON.stringify(horStr), "sede=", sede);
   if(!horStr) return;
   const isMulti = sede==='Multisede';
   const parts = horStr.split(' / ').filter(Boolean);
@@ -3176,6 +3177,7 @@ function parseHorariosToSlotState(horStr, sede){
       horaParsed = hora;
     }
     
+    console.log("slot_"+i+" timeMatch=", timeMatch?"ok":"FAIL", "remaining=", remaining);
     if(diaParsed && horaParsed){
       _slotState['slot_'+i] = {
         sede:      sedeParsed || sede,
@@ -3286,6 +3288,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
