@@ -2172,9 +2172,10 @@ function renderAttendance(){
     if(sede==='Multisede') return;
     const diasToShow = attSelectedDay!==null?[dayNames[attSelectedDay]]:DAYS_S;
     diasToShow.forEach(dia=>{
-      (dia==='Sábado'?SLOTS_SAB:SLOTS_WK).forEach(hora=>{
-        const acts = actFilt?[actFilt]:(ACTIVIDADES_SEDE[sede]||['Pilates']);
-        acts.forEach(actividad=>{
+      const acts = actFilt?[actFilt]:(ACTIVIDADES_SEDE[sede]||['Pilates Reformer']);
+      acts.forEach(actividad=>{
+        const horasAct = (SEDE_HORARIOS[sede]&&SEDE_HORARIOS[sede][actividad]&&SEDE_HORARIOS[sede][actividad][dia])||[];
+        horasAct.forEach(hora=>{
           let list = getSlotStudentsByActividad(sede,dia,hora,actividad);
           if(!list.length) return;
           const dayIdx = DAYS_S.indexOf(dia);
@@ -3131,10 +3132,10 @@ function parseHorariosToSlotState(horStr, sede){
     }
     
     // Parse "Día HHhs" e.g. "Mar 18hs"
-    const timeMatch = remaining.match(/^(\w+)\s+(\d+)hs$/);
+    const timeMatch = remaining.match(/^(\w+)\s+(\d+(?::\d+)?)hs$/);
     if(timeMatch){
       const diaAbr = timeMatch[1];
-      const hora   = timeMatch[2]+':00';
+      const hora   = timeMatch[2].includes(':')?timeMatch[2]:timeMatch[2]+':00';
       // Map abbreviation to full name
       diaParsed = DIAS_MAP[diaAbr] || diaAbr;
       horaParsed = hora;
@@ -3208,6 +3209,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
