@@ -1141,7 +1141,7 @@ const INITIAL_STUDENTS = [
 ];
 
 let db, auth, students=[], allTx=[], cu=null, currentSede='todas';
-let filteredS=[], curPage=1, finPeriod='todo', currentTxFilter='';
+let filteredS=[], curPage=1, finPeriod='dia', currentTxFilter='';
 let sortCol='apellido', sortDir='asc';
 let attSelectedDay = null; // for attendance day filter
 const PER=10;
@@ -1223,7 +1223,6 @@ async function initFirebase(){
       setSyncStatus(true);
       updatePendBadge();
       checkSolicitudes();
-      syncStudentPaymentsToTx();
       const a=document.querySelector('.view.active');
       if(a&&cu){const v=a.id.replace('view-','');
         ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,
@@ -1232,17 +1231,10 @@ async function initFirebase(){
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(snap=>{
-      const loaded = snap.docs.map(doc=>({id:doc.id,...doc.data()}));
-      if(loaded.length > 0){
-        allTx = loaded;
-      } else {
-        // No real transactions - use student payment data
-        syncStudentPaymentsToTx();
-        return;
-      }
+      allTx=snap.docs.map(doc=>({id:doc.id,...doc.data()}));
       const a=document.querySelector('.view.active');
       if(a&&cu&&a.id==='view-financiero')renderFinanciero();
-    },()=>{ syncStudentPaymentsToTx(); });
+    },()=>{});
 
     setSyncStatus(true);
 
@@ -1347,7 +1339,7 @@ function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes',vencimientos:'Vencimientos',solicitudes:'Solicitudes'};
+  const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes'};
   document.getElementById('tb-title').textContent=T[v]||v;
   document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${v}'`))el.classList.add('active');});
   ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos,solicitudes:renderSolicitudes}[v]||function(){})();
@@ -1478,13 +1470,7 @@ function selectAttDay(i){
 function clearAttDay(){attSelectedDay=null;renderAttendance();}
 
 
-function toggleCiCheck(id){
-  ciChecked[id]=!ciChecked[id];
-  const el=document.getElementById('chk-'+id);
-  if(el){el.className='ci-chk'+(ciChecked[id]?' checked':'');el.textContent=ciChecked[id]?'✓':'';}
-  const countEl=document.getElementById('ci-checked-count');
-  if(countEl) countEl.textContent=Object.values(ciChecked).filter(Boolean).length+' marcados';
-}
+function toggleCiCheck(id){ciChecked[id]=!ciChecked[id];const el=document.getElementById('chk-'+id);el.className='ci-chk'+(ciChecked[id]?' checked':'');el.textContent=ciChecked[id]?'✓':'';}
 async function saveCheckin(){
   const dia=ciSlotKey.split('|')[1];const dayIdx=DAYS_S.indexOf(dia);
   try{
@@ -2280,14 +2266,6 @@ function renderFinanciero(){
 
   const listEl = document.getElementById('tx-list');
   if(listEl) listEl.innerHTML = '<div style="background:var(--warm);">'+txHTML+'</div>';
-}
-
-function finLimpiarFiltros(){
-  ['fin-filtro-sede','fin-filtro-plan','fin-filtro-metodo'].forEach(function(id){
-    const el = document.getElementById(id);
-    if(el) el.value = '';
-  });
-  renderFinanciero();
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -3175,15 +3153,13 @@ function parseHorariosToSlotState(horStr, sede){
   });
 }
 
-
 function syncStudentPaymentsToTx(){
   if(allTx.length > 0) return;
-  // Build transactions from every student with a monto
-  const synth = [];
+  var synth = [];
   students.forEach(function(s){
-    const monto = parseFloat(s.monto) || 0;
+    var monto = parseFloat(s.monto) || 0;
     if(monto <= 0) return;
-    const alDia = (s.ep==='Al día'||s.ep==='Al dia'||s.ep==='Vencido');
+    var alDia = (s.ep==='Al día' || s.ep==='Al dia' || s.ep==='Vencido');
     synth.push({
       id: 'student_'+s.id,
       clienteNombre: (s.nombre||'')+' '+(s.apellido||''),
@@ -3198,26 +3174,40 @@ function syncStudentPaymentsToTx(){
     });
   });
   allTx = synth;
-  const a = document.querySelector('.view.active');
+  var a = document.querySelector('.view.active');
   if(a && a.id === 'view-financiero') renderFinanciero();
-}
 
 
 function restoreSlotSelections(s){
-  // Called after updateHorarioSelector to restore saved values into dropdowns
-  Object.entries(_slotState).forEach(function(entry){
-    const key = entry[0]; const row = entry[1];
-    const i = parseInt(key.replace('slot_',''));
-    const sedeEl = document.getElementById('slot-sede-'+i);
-    const actEl  = document.getElementById('slot-act-'+i);
-    const diaEl  = document.getElementById('slot-dia-'+i);
-    const horaEl = document.getElementById('slot-hora-'+i);
-    if(!actEl && !diaEl) return; // row doesn't exist
-
-    // Set actividad
-    if(actEl && row.actividad){
-      actEl.value = row.actividad;
-    }
+  Object.keys(_slotState).forEach(function(key){
+    var row = _slotState[key];
+    var i = parseInt(key.replace('slot_',''));
+    var actEl  = document.getElementById('slot-act-'+i);
+    var diaEl  = document.getElementById('slot-dia-'+i);
+    var horaEl = document.getElementById('slot-hora-'+i);
+    if(!actEl || !diaEl || !horaEl) return;
+    var sedeEl = document.getElementById('f-sede');
+    var sedeVal = sedeEl ? sedeEl.value : (s && s.sede ? s.sede : 'Amarras');
+    var isMulti = sedeVal === 'Multisede';
+    var slotSedeEl = document.getElementById('slot-sede-'+i);
+    var slotSede = isMulti ? (slotSedeEl ? slotSedeEl.value : '') : sedeVal;
+    if(isMulti && slotSedeEl && row.sede) slotSedeEl.value = row.sede;
+    var useSede = isMulti ? (row.sede || slotSede || 'Amarras') : sedeVal;
+    if(row.actividad) actEl.value = row.actividad;
+    var act = actEl.value || row.actividad || 'Pilates Reformer';
+    var dias = getDiasForSedeAct(useSede, act);
+    diaEl.innerHTML = '<option value="">— Día —</option>' +
+      dias.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+    if(row.dia) diaEl.value = row.dia;
+    var dia = diaEl.value;
+    if(!dia) return;
+    var slots = getSlotsForSedeActDia(useSede, act, dia);
+    horaEl.innerHTML = '<option value="">— Horario —</option>' +
+      slots.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
+    if(row.hora) horaEl.value = row.hora;
+  });
+  _updateHorarioHiddenFromState();
+}
 
     // Rebuild dias for this actividad and set
     if(diaEl){
@@ -3239,9 +3229,18 @@ function restoreSlotSelections(s){
         slots2.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
       if(row.hora) horaEl.value = row.hora;
     }
+  }
+
+function finLimpiarFiltros(){
+  ['fin-filtro-sede','fin-filtro-plan','fin-filtro-metodo'].forEach(function(id){
+    const el = document.getElementById(id);
+    if(el) el.value = '';
   });
-  _updateHorarioHiddenFromState();
+  renderFinanciero();
 }
+
+
+
 
 window.addEventListener('resize',applyMobileLayout);
 
@@ -3275,35 +3274,6 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
