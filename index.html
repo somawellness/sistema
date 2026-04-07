@@ -453,7 +453,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   </div>
 </div>
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
+  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="closeModalD()">✕</button></div><div id="slot-content"></div></div>
 </div>
 
 <!-- MODAL CHECKIN ASISTENCIA -->
@@ -1736,39 +1736,8 @@ function openModal(mode,id){
     const actEl = document.getElementById('f-actividad');
     if(actEl && s.actividad) actEl.value = s.actividad;
     // Give time for DOM to update before populating selects
-    setTimeout(function(){
-      updateHorarioSelector();
-      // After dropdowns render, restore saved selections
-      setTimeout(function(){
-        Object.entries(_slotState).forEach(function([key, row]){
-          const i = parseInt(key.replace('slot_',''));
-          const sedeEl = document.getElementById('slot-sede-'+i);
-          const actEl2 = document.getElementById('slot-act-'+i);
-          const diaEl  = document.getElementById('slot-dia-'+i);
-          const horaEl = document.getElementById('slot-hora-'+i);
-          if(sedeEl && row.sede)    sedeEl.value = row.sede;
-          if(actEl2 && row.actividad) actEl2.value = row.actividad;
-          if(diaEl){
-            // Refresh day options for this actividad
-            const sede2  = (sedeEl&&sedeEl.value)||s.sede||'Amarras';
-            const act2   = (actEl2&&actEl2.value)||row.actividad;
-            const dias2  = getDiasForSedeAct(sede2,act2);
-            diaEl.innerHTML = '<option value="">— Día —</option>'+dias2.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
-            if(row.dia) diaEl.value = row.dia;
-          }
-          if(horaEl && diaEl){
-            // Refresh hora options
-            const sede2  = (sedeEl&&sedeEl.value)||s.sede||'Amarras';
-            const act2   = (actEl2&&actEl2.value)||row.actividad;
-            const dia2   = diaEl.value;
-            const slots2 = getSlotsForSedeActDia(sede2,act2,dia2);
-            horaEl.innerHTML = '<option value="">— Horario —</option>'+slots2.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
-            if(row.hora) horaEl.value = row.hora;
-          }
-        });
-        _updateHorarioHiddenFromState();
-      }, 100);
-    }, 80);
+    updateHorarioSelector();
+    restoreSlotSelections(s);
   }else{
     document.getElementById('m-title').textContent='Nuevo Cliente';
     document.getElementById('m-sub').textContent='Complete la información';
@@ -2256,8 +2225,8 @@ function renderFinanciero(){
     : filtered;
 
   // Split cobradas vs pendientes
-  const cobradas  = searchFiltered.filter(function(tx){ return tx.cobrado!==false && tx.ep!=='Pendiente'; });
-  const pendientes = searchFiltered.filter(function(tx){ return tx.cobrado===false || tx.ep==='Pendiente'; });
+  const cobradas  = searchFiltered.filter(function(tx){ return tx.cobrado===true; });
+  const pendientes = searchFiltered.filter(function(tx){ return tx.cobrado!==true; });
 
   // Summary uses only cobradas
   const totalCobrado  = cobradas.reduce(function(a,tx){ return a+(tx.monto||0); }, 0);
@@ -3214,7 +3183,7 @@ function syncStudentPaymentsToTx(){
   students.forEach(function(s){
     const monto = parseFloat(s.monto) || 0;
     if(monto <= 0) return;
-    const alDia = (s.ep==='Al día'||s.ep==='Al dia');
+    const alDia = (s.ep==='Al día'||s.ep==='Al dia'||s.ep==='Vencido');
     synth.push({
       id: 'student_'+s.id,
       clienteNombre: (s.nombre||'')+' '+(s.apellido||''),
@@ -3231,6 +3200,47 @@ function syncStudentPaymentsToTx(){
   allTx = synth;
   const a = document.querySelector('.view.active');
   if(a && a.id === 'view-financiero') renderFinanciero();
+}
+
+
+function restoreSlotSelections(s){
+  // Called after updateHorarioSelector to restore saved values into dropdowns
+  Object.entries(_slotState).forEach(function(entry){
+    const key = entry[0]; const row = entry[1];
+    const i = parseInt(key.replace('slot_',''));
+    const sedeEl = document.getElementById('slot-sede-'+i);
+    const actEl  = document.getElementById('slot-act-'+i);
+    const diaEl  = document.getElementById('slot-dia-'+i);
+    const horaEl = document.getElementById('slot-hora-'+i);
+    if(!actEl && !diaEl) return; // row doesn't exist
+
+    // Set actividad
+    if(actEl && row.actividad){
+      actEl.value = row.actividad;
+    }
+
+    // Rebuild dias for this actividad and set
+    if(diaEl){
+      const sede2 = (sedeEl&&sedeEl.value) || (s&&s.sede) || 'Amarras';
+      const act2  = (actEl&&actEl.value)   || row.actividad || '';
+      const dias2 = getDiasForSedeAct(sede2, act2);
+      diaEl.innerHTML = '<option value="">— Día —</option>' +
+        dias2.map(function(d){ return '<option value="'+d+'">'+d+'</option>'; }).join('');
+      if(row.dia) diaEl.value = row.dia;
+    }
+
+    // Rebuild horas for this dia and set
+    if(horaEl && diaEl){
+      const sede2  = (sedeEl&&sedeEl.value) || (s&&s.sede) || 'Amarras';
+      const act2   = (actEl&&actEl.value)   || row.actividad || '';
+      const dia2   = diaEl.value;
+      const slots2 = getSlotsForSedeActDia(sede2, act2, dia2);
+      horaEl.innerHTML = '<option value="">— Horario —</option>' +
+        slots2.map(function(h){ return '<option value="'+h+'">'+h.replace(':00','')+'hs</option>'; }).join('');
+      if(row.hora) horaEl.value = row.hora;
+    }
+  });
+  _updateHorarioHiddenFromState();
 }
 
 window.addEventListener('resize',applyMobileLayout);
@@ -3265,6 +3275,10 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
+
+
 
 
 
