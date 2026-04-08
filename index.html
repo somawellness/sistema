@@ -3440,9 +3440,13 @@ async function renderProfesores(){
   if(!profMes){ var now=new Date(); profMes=now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0')); }
   if(!db)return;
   try{
+    console.log('fetching profesores...');
     var pSnap=await db.collection('profesores').get();
+    console.log('profesores fetched:',pSnap.size);
     var profs=pSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    console.log('fetching horas...');
     var hSnap=await db.collection('horas_profesores').where('mes','==',profMes).get();
+    console.log('horas fetched:',hSnap.size);
     var allH=hSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
     var totalH=allH.reduce(function(a,h){return a+(parseFloat(h.horas)||0);},0);
     var totalP=profs.reduce(function(acc,p){
@@ -3685,6 +3689,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
