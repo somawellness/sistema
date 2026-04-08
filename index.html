@@ -453,7 +453,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   </div>
 </div>
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="closeModalD()">✕</button></div><div id="slot-content"></div></div>
+  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
 </div>
 
 <!-- MODAL CHECKIN ASISTENCIA -->
@@ -3432,10 +3432,12 @@ function initProfMes(){
 
 async function renderProfesores(){
   var sel=document.getElementById('prof-mes-sel');
+  if(sel && !sel.options.length) initProfMes();
   if(sel)profMes=sel.value;
+  if(!profMes){ var now=new Date(); profMes=now.getFullYear()+'-'+(String(now.getMonth()+1).padStart(2,'0')); }
   if(!db)return;
   try{
-    var pSnap=await db.collection('profesores').orderBy('nombre').get();
+    var pSnap=await db.collection('profesores').get();
     var profs=pSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
     var hSnap=await db.collection('horas_profesores').where('mes','==',profMes).get();
     var allH=hSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
@@ -3680,6 +3682,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
