@@ -2399,6 +2399,14 @@ async function saveStudent(e){
         const batch2 = db.batch();
         txSnap.docs.forEach(function(tdoc){ batch2.update(tdoc.ref, {clienteNombre:newName}); });
         if(!txSnap.empty) await batch2.commit();
+        // Immediately update allTx in memory by clienteId (don't wait for onSnapshot)
+        allTx = allTx.map(function(tx){
+          if(tx.clienteId===editId || tx.id==='student_'+editId){
+            return Object.assign({},tx,{clienteNombre:newName});
+          }
+          return tx;
+        });
+        if(document.querySelector('#view-financiero.active')) renderFinanciero();
       }
     } else {
       d.att = [0,0,0,0,0,0];
@@ -3377,6 +3385,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
