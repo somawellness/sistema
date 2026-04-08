@@ -1240,7 +1240,11 @@ async function initFirebase(){
       // Mark all real transactions as cobrado:true
       allTx = snap.docs.map(function(doc){
         var d = Object.assign({id:doc.id}, doc.data());
-        if(d.cobrado === undefined) d.cobrado = true;
+        if(d.cobrado === undefined){
+          // Cross-reference with student ep
+          var stu = students.find(function(s){ return s.id === d.clienteId; });
+          d.cobrado = stu ? (stu.ep==='Al día'||stu.ep==='Al dia'||stu.ep==='Vencido') : true;
+        }
         return d;
       });
       if(allTx.length === 0) syncStudentPaymentsToTx();
@@ -2336,7 +2340,6 @@ async function saveStudent(e){
       const sedeVal2 = document.getElementById('f-sede').value;
       const isMulti2 = sedeVal2 === 'Multisede';
       const parts2 = [];
-      console.log('saveStudent: n2=',n2,'_slotState=',JSON.stringify(_slotState));
       for(let i=0; i<n2; i++){
         const sedeEl = document.getElementById('slot-sede-'+i);
         const actEl  = document.getElementById('slot-act-'+i);
@@ -2355,7 +2358,6 @@ async function saveStudent(e){
         const sedePrefix2 = isMulti2 && sede2 ? sede2+' ' : '';
         parts2.push(sedePrefix2+actPrefix2+slotStr2);
       }
-      console.log('saveStudent horarios parts:', parts2, 'f-hor:', document.getElementById('f-hor').value);
       return parts2.length > 0 ? parts2.join(' / ') : document.getElementById('f-hor').value.trim();
     })(),
     metodo:    document.getElementById('f-met').value,
@@ -3126,7 +3128,6 @@ async function crearAccesoPortal(studentId){
 
 
 function parseHorariosToSlotState(horStr, sede){
-  console.log("PARSE horStr=", JSON.stringify(horStr), "sede=", sede);
   if(!horStr) return;
   const isMulti = sede==='Multisede';
   const parts = horStr.split(' / ').filter(Boolean);
@@ -3168,7 +3169,7 @@ function parseHorariosToSlotState(horStr, sede){
     }
     
     // Parse "Día HHhs" e.g. "Mar 18hs"
-    const timeMatch = remaining.match(/^(\w+)\s+(\d+(?::\d+)?)hs$/);
+    const timeMatch = remaining.match(/^([^\s]+)\s+(\d+(?::\d+)?)hs$/);
     if(timeMatch){
       const diaAbr = timeMatch[1];
       const hora   = timeMatch[2].includes(':')?timeMatch[2]:timeMatch[2]+':00';
@@ -3177,7 +3178,6 @@ function parseHorariosToSlotState(horStr, sede){
       horaParsed = hora;
     }
     
-    console.log("slot_"+i+" timeMatch=", timeMatch?"ok":"FAIL", "remaining=", remaining);
     if(diaParsed && horaParsed){
       _slotState['slot_'+i] = {
         sede:      sedeParsed || sede,
@@ -3288,6 +3288,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
