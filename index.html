@@ -2094,19 +2094,25 @@ function getMultisedeStudentsInSede(sede){
 }
 
 function openSlotDetail(sede,dia,hora,actividad){
-  const list = getSlotStudentsByActividad(sede,dia,hora,actividad||'Pilates');
+  const list = getSlotStudentsByActividad(sede,dia,hora,actividad||'Pilates Reformer');
   const cupo = getCupo(sede);
   document.getElementById('slot-title').textContent = dia+' · '+hora+'hs'+(actividad?' — '+actividad:'');
   document.getElementById('slot-sub').textContent = 'Sede '+sede+' · '+list.length+'/'+cupo+' cupos';
   document.getElementById('slot-content').innerHTML = list.length===0
     ? '<p style="color:var(--muted);text-align:center;padding:20px;">Sin alumnos inscriptos.</p>'
     : list.map((s,i)=>
-        '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);cursor:pointer;" onclick="document.getElementById(\'slot-ov\').classList.remove(\'open\');openDetail(\''+s.id+'\')">'
-        +'<div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:34px;height:34px;font-size:12px;">'+ini2(s)+'</div>'
-        +'<div style="flex:1;"><div style="font-weight:500;font-size:13px;">'+s.nombre+' '+s.apellido+'</div>'
+        '<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border);">'
+        +'<div class="av" style="background:'+gc(i)+'22;color:'+gc(i)+';width:34px;height:34px;font-size:12px;cursor:pointer;" onclick="document.getElementById(\'slot-ov\').classList.remove(\'open\');openDetail(\''+s.id+'\')">'+ini2(s)+'</div>'
+        +'<div style="flex:1;cursor:pointer;" onclick="document.getElementById(\'slot-ov\').classList.remove(\'open\');openDetail(\''+s.id+'\')">'
+        +'<div style="font-weight:500;font-size:13px;">'+s.nombre+' '+s.apellido+'</div>'
         +'<div style="font-size:11px;color:var(--muted);">'+s.plan+(s.sede==='Multisede'?' 🏢 Multisede':'')+' · '+(s.telefono||s.email||'Sin contacto')+'</div>'
         +(s.lesiones?'<div style="font-size:10.5px;color:var(--err);margin-top:2px;">⚠ '+s.lesiones+'</div>':'')
-        +'</div><span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span></div>'
+        +'</div>'
+        +'<div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;">'
+        +'<span class="badge b-'+(s.ep==='Al día'?'ok':s.ep==='Pendiente'?'warn':'err')+'">'+s.ep+'</span>'
+        +(s.ep==='Pendiente'?'<button onclick="cobrarDesdeSlot(\''+s.id+'\',this)" style="background:var(--sage-d);color:#fff;border:none;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;font-family:var(--sans);">💰 Cobrar</button>':'')
+        +'</div>'
+        +'</div>'
       ).join('');
   document.getElementById('slot-ov').classList.add('open');
 }
@@ -3256,6 +3262,43 @@ function finLimpiarFiltros(){
 
 
 
+
+async function cobrarDesdeSlot(studentId, btn){
+  const s = students.find(x=>x.id===studentId);
+  if(!s){ showToast('Cliente no encontrado','⚠'); return; }
+  if(!confirm('¿Registrar cobro de '+fmtM(s.monto)+' para '+s.nombre+' '+s.apellido+'?')) return;
+  btn.textContent = '...'; btn.disabled = true;
+  try{
+    // Update student ep to Al día
+    await db.collection('students').doc(studentId).update({ep:'Al día'});
+    // Create transaction
+    const fecha = new Date().toISOString().split('T')[0];
+    const mesD  = new Date(fecha+'T12:00:00');
+    const mes   = mesD.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    const mesStr = mes.charAt(0).toUpperCase()+mes.slice(1);
+    await db.collection('transactions').add({
+      concepto:      'renovacion',
+      clienteId:     studentId,
+      clienteNombre: s.nombre+' '+s.apellido,
+      descripcion:   s.plan+' — '+mesStr,
+      monto:         s.monto,
+      metodo:        s.metodo||'Transferencia',
+      fecha:         fecha,
+      sede:          s.sede,
+      cobrado:       true,
+      createdAt:     new Date().toISOString()
+    });
+    // Update local allTx
+    allTx = allTx.map(tx=> tx.id==='student_'+studentId ? {...tx, cobrado:true} : tx);
+    showToast(s.nombre+' marcado/a Al día ✓');
+    // Refresh the slot modal
+    const titleParts = document.getElementById('slot-title').textContent.split(' — ');
+    const subParts   = document.getElementById('slot-sub').textContent.split(' · ');
+    const sedeName   = subParts[0].replace('Sede ','');
+    document.getElementById('slot-ov').classList.remove('open');
+  }catch(e){ showToast('Error: '+e.message,'⚠'); btn.textContent='💰 Cobrar'; btn.disabled=false; }
+}
+
 window.addEventListener('resize',applyMobileLayout);
 
 
@@ -3288,6 +3331,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
