@@ -1388,6 +1388,8 @@ function logout(){cu=null;document.getElementById('login-screen').style.display=
 function initApp(){
   const navSol=document.getElementById('nav-solicitudes');
   if(navSol)navSol.style.display=(cu&&cu.role==='admin')?'':"none";
+  const navProf=document.getElementById('nav-profesores');
+  if(navProf)navProf.style.display=(cu&&cu.role==='admin')?'flex':"none";
   const isA=cu.role==='admin';
   document.getElementById('main-app').className='main '+(isA?'role-admin':'role-instructor');
   document.getElementById('sidebar').className='sidebar '+(isA?'role-admin':'role-instructor');
@@ -3730,6 +3732,8 @@ async function delHoras(hid, pid, pnom){
     renderProfesores();
   } catch(e){ showToast('Error: '+e.message,'&#9888;'); }
 }
+
+
 
 </script>
 </body>
