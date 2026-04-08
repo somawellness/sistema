@@ -453,7 +453,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   </div>
 </div>
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="closeModalD()">✕</button></div><div id="slot-content"></div></div>
+  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
 </div>
 
 <!-- MODAL CHECKIN ASISTENCIA -->
@@ -2276,17 +2276,23 @@ function renderFinanciero(){
 
   function txRow(tx, i){
     const isSynth = tx._synthetic;
+    const isPend  = tx.cobrado !== true;
+    // Find clienteId for synthetic TX
+    const cid = tx.clienteId || (isSynth ? tx.id.replace('student_','') : null);
     return '<div class="tx-row">'
       +'<div class="tx-ico" style="background:'+gc(i)+'15;color:'+gc(i)+';">'+(metIco[tx.metodo]||'💰')+'</div>'
       +'<div style="flex:1;">'
       +'<div class="tx-name">'+(tx.clienteNombre||'Ingreso')+'</div>'
       +'<div class="tx-detail">'+(tx.descripcion||'—')+' · '+(tx.metodo||'—')+' · '+(tx.sede||'—')+'</div>'
       +'</div>'
-      +'<div style="text-align:right;flex-shrink:0;">'
-      +'<div class="tx-amount">'+fmtM(tx.monto)+'</div>'
+      +'<div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">'
+      +'<div style="text-align:right;">'
+      +'<div class="tx-amount" style="color:'+(isPend?'var(--err)':'var(--sage-d)')+';">'+fmtM(tx.monto)+'</div>'
       +'<div class="tx-date">'+fmtD(tx.fecha)+'</div>'
       +'</div>'
-      +(!isSynth ? '<button class="ibt dl" data-id="'+tx.id+'" onclick="deleteTx(this.dataset.id)" style="margin-left:8px;">✕</button>' : '')
+      +(isPend && cid ? '<button onclick="cobrarTx(&quot;'+cid+'&quot;,&quot;'+tx.id+'&quot;,this)" style="background:var(--sage-d);color:#fff;border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:var(--sans);white-space:nowrap;">💰 Cobrar</button>' : '')
+      +(!isSynth ? '<button class="ibt dl" data-id="'+tx.id+'" onclick="deleteTx(this.dataset.id)" style="margin-left:4px;">✕</button>' : '')
+      +'</div>'
       +'</div>';
   }
 
@@ -3299,6 +3305,46 @@ async function cobrarDesdeSlot(studentId, btn){
   }catch(e){ showToast('Error: '+e.message,'⚠'); btn.textContent='💰 Cobrar'; btn.disabled=false; }
 }
 
+
+async function cobrarTx(clienteId, txId, btn){
+  const s = students.find(function(x){ return x.id===clienteId; });
+  if(!s){ showToast('Cliente no encontrado','⚠'); return; }
+  const nombre = s.nombre+' '+s.apellido;
+  if(!confirm('Registrar cobro de '+fmtM(s.monto)+' para '+nombre+'?')) return;
+  btn.textContent='...'; btn.disabled=true;
+  try{
+    const fecha = new Date().toISOString().split('T')[0];
+    const mesD  = new Date(fecha+'T12:00:00');
+    const mes   = mesD.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    const mesStr = mes.charAt(0).toUpperCase()+mes.slice(1);
+    // Mark student as Al día
+    await db.collection('students').doc(clienteId).update({ep:'Al día'});
+    // If real TX exists, update it; otherwise create new
+    if(txId && !txId.startsWith('student_')){
+      await db.collection('transactions').doc(txId).update({cobrado:true});
+    } else {
+      await db.collection('transactions').add({
+        concepto:      'renovacion',
+        clienteId:     clienteId,
+        clienteNombre: nombre,
+        descripcion:   (s.plan||'Plan')+' — '+mesStr,
+        monto:         s.monto||0,
+        metodo:        s.metodo||'Transferencia',
+        fecha:         fecha,
+        sede:          s.sede||'',
+        cobrado:       true,
+        createdAt:     new Date().toISOString()
+      });
+    }
+    // Update allTx in memory
+    allTx = allTx.map(function(tx){
+      return (tx.id===txId || tx.clienteId===clienteId) ? Object.assign({},tx,{cobrado:true}) : tx;
+    });
+    showToast(nombre+' cobrado/a ✓');
+    renderFinanciero();
+  }catch(e){ showToast('Error: '+e.message,'⚠'); btn.textContent='💰 Cobrar'; btn.disabled=false; }
+}
+
 window.addEventListener('resize',applyMobileLayout);
 
 
@@ -3331,6 +3377,8 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
 
 
 
