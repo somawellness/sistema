@@ -453,7 +453,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
   </div>
 </div>
 <div class="ov" id="slot-ov" onclick="if(event.target===this)this.classList.remove('open')">
-  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="document.getElementById('slot-ov').classList.remove('open')">✕</button></div><div id="slot-content"></div></div>
+  <div class="modal" style="width:420px;"><div class="mhd"><div><div class="mt" id="slot-title">Turno</div><div class="ms" id="slot-sub"></div></div><button class="cbtn" onclick="closeModalD()">✕</button></div><div id="slot-content"></div></div>
 </div>
 
 <!-- MODAL CHECKIN ASISTENCIA -->
@@ -607,6 +607,7 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     <div class="nav-item ao" onclick="showView('vencimientos')"><span class="nav-icon">⏰</span>Vencimientos</div>
       <div class="nav-item" id="nav-solicitudes" style="display:none;" onclick="showView('solicitudes')"><span class="nav-icon">📋</span>Solicitudes<span id="solicitudes-badge" style="display:none;background:var(--err);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;margin-left:6px;"></span></div>
       <div class="nav-item" onclick="showView('reportes')"><span class="nav-ico">◧</span> Reportes</div>
+    <div class="nav-item" id="nav-profesores" style="display:none;" onclick="showView('profesores')"><span class="nav-ico">&#128203;</span> Profesores</div>
   </nav>
   <div class="sb-foot">
     <div><span class="sync-dot" id="sync-dot"></span><span id="sync-label">Firebase Sync</span></div>
@@ -990,7 +991,65 @@ input[readonly]{background:#f0ede8!important;color:var(--sage-d);font-weight:500
     <div id="import-result" style="max-height:200px;overflow-y:auto;font-size:12px;margin-bottom:12px;"></div>
     <div id="import-confirm" style="display:none;">
       <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Revisá los datos antes de confirmar.</div>
-<div id="f-actividad-wrap" style="display:none!important;position:absolute;"><select id="f-actividad"></select></div>
+
+<div id="view-profesores" class="view">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+    <div><h2 style="font-family:var(--serif);font-size:22px;font-weight:400;margin:0;">Registro de Horas</h2>
+    <p style="color:var(--muted);font-size:13px;margin:4px 0 0;">Control de horas trabajadas y sueldos por profesor</p></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <select id="prof-mes-sel" onchange="renderProfesores()" style="padding:8px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--warm);font-size:13px;color:var(--char);cursor:pointer;"></select>
+      <button class="btn btn-p btn-sm" onclick="openAddProfesor()">+ Profesor</button>
+      <button class="btn btn-p btn-sm" onclick="openRegistroHoras()">+ Registrar horas</button>
+    </div>
+  </div>
+  <div id="prof-summary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;"></div>
+  <div style="background:var(--warm);border-radius:16px;border:1px solid var(--border);overflow:hidden;">
+    <div style="display:grid;grid-template-columns:1fr 1fr 80px 100px 110px 130px;padding:10px 20px;background:rgba(74,103,65,.06);border-bottom:1px solid var(--border);font-size:11px;font-weight:600;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">
+      <div>Profesor</div><div>Sede</div><div>Horas</div><div>Valor/h</div><div>Total</div><div style="text-align:right;">Acciones</div>
+    </div>
+    <div id="prof-content"><div style="text-align:center;padding:40px;color:var(--muted);">Cargando...</div></div>
+  </div>
+</div>
+<div class="ov" id="prof-add-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:440px;">
+    <div class="mhd"><div><div class="mt">Nuevo Profesor</div><div class="ms">Agregar al registro</div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-add-ov').classList.remove('open')">&#x2715;</button></div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fgrp"><label>Nombre completo *</label><input id="prof-nombre" placeholder="Ej: Daina Cejas" class="finput"></div>
+      <div class="fgrp"><label>Sede *</label><select id="prof-sede" class="finput"><option value="Amarras">Amarras</option><option value="Centro">Centro</option><option value="Faro">Faro</option><option value="Todas">Todas las sedes</option></select></div>
+      <div class="fgrp"><label>Valor por hora ($)</label><input id="prof-valor-hora" type="number" placeholder="9500" class="finput"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-add-ov').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveProfesor()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ov" id="prof-horas-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:480px;">
+    <div class="mhd"><div><div class="mt">Registrar Horas</div><div class="ms">Cargar horas por dia</div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">&#x2715;</button></div>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="fgrp"><label>Profesor *</label><select id="horas-prof-sel" class="finput"><option value="">- Seleccionar -</option></select></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="fgrp"><label>Fecha *</label><input id="horas-fecha" type="date" class="finput"></div>
+        <div class="fgrp"><label>Horas *</label><input id="horas-cantidad" type="number" min="0.5" max="24" step="0.5" placeholder="4" class="finput"></div>
+      </div>
+      <div class="fgrp"><label>Notas</label><input id="horas-notas" placeholder="Ej: Clase extra, evento..." class="finput"></div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button class="btn btn-o btn-sm" onclick="document.getElementById('prof-horas-ov').classList.remove('open')">Cancelar</button>
+        <button class="btn btn-p btn-sm" onclick="saveHoras()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="ov" id="prof-detail-ov" onclick="if(event.target===this)this.classList.remove('open')">
+  <div class="modal" style="max-width:600px;">
+    <div class="mhd"><div><div class="mt" id="prof-detail-title">Profesor</div><div class="ms" id="prof-detail-sub"></div></div>
+    <button class="ibt cl" onclick="document.getElementById('prof-detail-ov').classList.remove('open')">&#x2715;</button></div>
+    <div id="prof-detail-content" style="max-height:60vh;overflow-y:auto;"></div>
+  </div>
+</div>
 <script>
 const firebaseConfig = {
   apiKey: "AIzaSyD5E3_yor_lR7N41WjR1CtOzS3WjkQGE_4",
@@ -1233,7 +1292,7 @@ async function initFirebase(){
       if(a&&cu){const v=a.id.replace('view-','');
         ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,
           asistencia:renderAttendance,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,
-          financiero:renderFinanciero,vencimientos:renderVencimientos,solicitudes:renderSolicitudes}[v]||function(){})();}
+          financiero:renderFinanciero,vencimientos:renderVencimientos,solicitudes:renderSolicitudes,profesores:renderProfesores}[v]||function(){})();}
     },()=>setSyncStatus(false));
 
     db.collection('transactions').orderBy('fecha','desc').onSnapshot(function(snap){
@@ -1272,6 +1331,7 @@ async function initFirebase(){
       if(a&&cu&&a.id==='view-financiero')renderFinanciero();
     },function(){ syncStudentPaymentsToTx(); });
 
+    initProfMes();
     setSyncStatus(true);
 
   }catch(err){
@@ -1327,7 +1387,9 @@ function doLogin(){
 function logout(){cu=null;document.getElementById('login-screen').style.display='flex';document.getElementById('li-u').value='';document.getElementById('li-p').value='';}
 function initApp(){
   const navSol=document.getElementById('nav-solicitudes');
-  if(navSol)navSol.style.display=(cu&&cu.role==='admin')?'':"none";
+  if(navSol)navSol.style.display=(cu&&cu.role==='admin')?'flex':"none";
+  const navProf=document.getElementById('nav-profesores');
+  if(navProf)navProf.style.display=(cu&&cu.role==='admin')?'flex':"none";
   const isA=cu.role==='admin';
   document.getElementById('main-app').className='main '+(isA?'role-admin':'role-instructor');
   document.getElementById('sidebar').className='sidebar '+(isA?'role-admin':'role-instructor');
@@ -1375,10 +1437,10 @@ function showView(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(x=>x.classList.remove('active'));
   document.getElementById('view-'+v).classList.add('active');
-  const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes'};
+  const T={dashboard:'Dashboard',estudiantes:'Clientes',horarios:'Horarios',asistencia:'Asistencia',financiero:'Financiero',pagos:'Pagos',salud:'Salud',planes:'Planes y Tarifas',reportes:'Reportes',profesores:'Profesores'};
   document.getElementById('tb-title').textContent=T[v]||v;
   document.querySelectorAll('.nav-item').forEach(el=>{if(el.getAttribute('onclick')&&el.getAttribute('onclick').includes(`'${v}'`))el.classList.add('active');});
-  ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos,solicitudes:renderSolicitudes}[v]||function(){})();
+  ({dashboard:renderDashboard,estudiantes:renderStudents,horarios:renderSchedule,asistencia:renderAttendance,financiero:renderFinanciero,pagos:renderPayments,salud:renderHealth,planes:renderPlanes,vencimientos:renderVencimientos,solicitudes:renderSolicitudes,profesores:renderProfesores}[v]||function(){})();
   if(typeof updateMobileNav==='function')updateMobileNav();
   checkSolicitudes();
   updateMobileNav();
@@ -3277,41 +3339,7 @@ function finLimpiarFiltros(){
 
 
 
-async function cobrarDesdeSlot(studentId, btn){
-  const s = students.find(x=>x.id===studentId);
-  if(!s){ showToast('Cliente no encontrado','⚠'); return; }
-  if(!confirm('¿Registrar cobro de '+fmtM(s.monto)+' para '+s.nombre+' '+s.apellido+'?')) return;
-  btn.textContent = '...'; btn.disabled = true;
-  try{
-    // Update student ep to Al día
-    await db.collection('students').doc(studentId).update({ep:'Al día'});
-    // Create transaction
-    const fecha = new Date().toISOString().split('T')[0];
-    const mesD  = new Date(fecha+'T12:00:00');
-    const mes   = mesD.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
-    const mesStr = mes.charAt(0).toUpperCase()+mes.slice(1);
-    await db.collection('transactions').add({
-      concepto:      'renovacion',
-      clienteId:     studentId,
-      clienteNombre: s.nombre+' '+s.apellido,
-      descripcion:   s.plan+' — '+mesStr,
-      monto:         s.monto,
-      metodo:        s.metodo||'Transferencia',
-      fecha:         fecha,
-      sede:          s.sede,
-      cobrado:       true,
-      createdAt:     new Date().toISOString()
-    });
-    // Update local allTx
-    allTx = allTx.map(tx=> tx.id==='student_'+studentId ? {...tx, cobrado:true} : tx);
-    showToast(s.nombre+' marcado/a Al día ✓');
-    // Refresh the slot modal
-    const titleParts = document.getElementById('slot-title').textContent.split(' — ');
-    const subParts   = document.getElementById('slot-sub').textContent.split(' · ');
-    const sedeName   = subParts[0].replace('Sede ','');
-    document.getElementById('slot-ov').classList.remove('open');
-  }catch(e){ showToast('Error: '+e.message,'⚠'); btn.textContent='💰 Cobrar'; btn.disabled=false; }
-}
+
 
 
 async function cobrarTx(clienteId, txId, btn){
@@ -3353,6 +3381,273 @@ async function cobrarTx(clienteId, txId, btn){
   }catch(e){ showToast('Error: '+e.message,'⚠'); btn.textContent='💰 Cobrar'; btn.disabled=false; }
 }
 
+
+
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+var profMes='';
+function initProfMes(){
+  var sel=document.getElementById('prof-mes-sel');
+  if(!sel)return;
+  sel.innerHTML='';
+  var now=new Date();
+  for(var i=-5;i<=2;i++){
+    var d=new Date(now.getFullYear(),now.getMonth()+i,1);
+    var val=d.getFullYear()+'-'+(String(d.getMonth()+1).padStart(2,'0'));
+    var lbl=d.toLocaleDateString('es-AR',{month:'long',year:'numeric'});
+    var opt=document.createElement('option');
+    opt.value=val;
+    opt.textContent=lbl.charAt(0).toUpperCase()+lbl.slice(1);
+    if(i===0)opt.selected=true;
+    sel.appendChild(opt);
+  }
+  profMes=sel.value;
+}
+
+async function renderProfesores(){
+  var sel=document.getElementById('prof-mes-sel');
+  if(sel)profMes=sel.value;
+  if(!db)return;
+  try{
+    var pSnap=await db.collection('profesores').orderBy('nombre').get();
+    var profs=pSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var hSnap=await db.collection('horas_profesores').where('mes','==',profMes).get();
+    var allH=hSnap.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    var totalH=allH.reduce(function(a,h){return a+(parseFloat(h.horas)||0);},0);
+    var totalP=profs.reduce(function(acc,p){
+      var hrs=allH.filter(function(h){return h.profesorId===p.id;})
+                  .reduce(function(a,h){return a+(parseFloat(h.horas)||0);},0);
+      return acc+hrs*(parseFloat(p.valorHora)||0);
+    },0);
+    var sEl=document.getElementById('prof-summary');
+    if(sEl)sEl.innerHTML=
+      '<div class="fin-item"><div class="fin-label">Profesores</div><div class="fin-value" style="font-size:28px;">'+profs.length+'</div><div class="fin-sub">activos</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Total horas</div><div class="fin-value" style="font-size:28px;">'+totalH+'hs</div><div class="fin-sub">registradas</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Total a pagar</div><div class="fin-value">'+fmtM(totalP)+'</div><div class="fin-sub">este mes</div></div>';
+    var cEl=document.getElementById('prof-content');
+    if(!cEl)return;
+    if(!profs.length){
+      cEl.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);">Sin profesores. Usar "+ Profesor" para agregar.</div>';
+      return;
+    }
+    cEl.innerHTML=profs.map(function(p){
+      var hrs=allH.filter(function(h){return h.profesorId===p.id;})
+                  .reduce(function(a,h){return a+(parseFloat(h.horas)||0);},0);
+      var tot=hrs*(parseFloat(p.valorHora)||0);
+      return '<div style="display:grid;grid-template-columns:1fr 1fr 80px 100px 110px 130px;padding:14px 20px;border-bottom:1px solid var(--border);align-items:center;">'
+        +'<div><div style="font-weight:500;font-size:14px;">'+p.nombre+'</div>'
+        +(p.notas?'<div style="font-size:11px;color:var(--muted);">'+p.notas+'</div>':'')+'</div>'
+        +'<div><span class="badge b-neu" style="font-size:11px;">'+p.sede+'</span></div>'
+        +'<div style="font-size:14px;font-weight:500;">'+hrs+'hs</div>'
+        +'<div style="font-size:13px;color:var(--muted);">'+fmtM(parseFloat(p.valorHora)||0)+'/h</div>'
+        +'<div style="font-size:15px;font-weight:600;color:var(--sage-d);">'+fmtM(tot)+'</div>'
+        +'<div style="display:flex;gap:6px;justify-content:flex-end;">'
+        +'<button onclick="openDetProf(event,\''+p.id+'\',\''+p.nombre.replace(/'/g,'&#39;')+'\')" style="background:rgba(74,103,65,.1);color:var(--sage-d);border:none;border-radius:7px;padding:5px 10px;font-size:11px;cursor:pointer;">Ver horas</button>'
+        +'<button onclick="editProfesor(\''+p.id+'\');event.stopPropagation()" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;">&#9998;</button>'
+        +'<button onclick="delProf(event,\''+p.id+'\',\''+p.nombre.replace(/'/g,'&#39;')+'\')" style="background:none;border:1px solid var(--border);border-radius:7px;padding:5px 8px;font-size:11px;cursor:pointer;color:var(--err);">&#x2715;</button>'
+        +'</div></div>';
+    }).join('');
+  }catch(e){console.error('renderProfesores:',e);}
+}
+
+function openAddProfesor(ed){
+  document.getElementById('prof-nombre').value=ed?ed.nombre:'';
+  document.getElementById('prof-sede').value=ed?ed.sede:'Amarras';
+  document.getElementById('prof-valor-hora').value=ed?(ed.valorHora||''):'9500';
+  document.getElementById('prof-add-ov').dataset.editId=ed?ed.id:'';
+  document.getElementById('prof-add-ov').querySelector('.mt').textContent=ed?'Editar Profesor':'Nuevo Profesor';
+  document.getElementById('prof-add-ov').classList.add('open');
+  setTimeout(function(){document.getElementById('prof-nombre').focus();},80);
+}
+
+async function saveProfesor(){
+  var nom=document.getElementById('prof-nombre').value.trim();
+  if(!nom){showToast('Ingresa el nombre','&#9888;');return;}
+  var data={
+    nombre:nom,
+    sede:document.getElementById('prof-sede').value,
+    valorHora:parseFloat(document.getElementById('prof-valor-hora').value)||9500
+  };
+  var eid=document.getElementById('prof-add-ov').dataset.editId;
+  try{
+    if(eid) await db.collection('profesores').doc(eid).update(data);
+    else await db.collection('profesores').add(Object.assign({},data,{creadoEn:new Date().toISOString()}));
+    showToast(nom+(eid?' actualizado/a':' agregado/a')+' \u2713');
+    document.getElementById('prof-add-ov').classList.remove('open');
+    renderProfesores();
+  }catch(e){showToast('Error: '+e.message,'&#9888;');}
+}
+
+async function editProfesor(id){
+  var doc=await db.collection('profesores').doc(id).get();
+  if(doc.exists) openAddProfesor(Object.assign({id:doc.id},doc.data()));
+}
+
+function delProf(ev,id,nom){
+  ev.stopPropagation();
+  if(!confirm('Eliminar a '+nom+'?\nSe borran sus horas registradas.'))return;
+  db.collection('horas_profesores').where('profesorId','==',id).get()
+    .then(function(snap){
+      var b=db.batch();
+      snap.docs.forEach(function(d){b.delete(d.ref);});
+      b.delete(db.collection('profesores').doc(id));
+      return b.commit();
+    }).then(function(){showToast(nom+' eliminado/a \u2713');renderProfesores();})
+    .catch(function(e){showToast('Error: '+e.message,'&#9888;');});
+}
+
+function openRegistroHoras(){
+  db.collection('profesores').orderBy('nombre').get().then(function(snap){
+    var sel=document.getElementById('horas-prof-sel');
+    sel.innerHTML='<option value="">- Seleccionar -</option>';
+    snap.docs.forEach(function(d){
+      var o=document.createElement('option');
+      o.value=d.id;
+      o.textContent=d.data().nombre+' ('+d.data().sede+')';
+      sel.appendChild(o);
+    });
+  });
+  document.getElementById('horas-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('horas-cantidad').value='';
+  document.getElementById('horas-notas').value='';
+  document.getElementById('horas-prof-sel').dataset.editId='';
+  document.getElementById('prof-horas-ov').querySelector('.mt').textContent='Registrar Horas';
+  document.getElementById('prof-horas-ov').classList.add('open');
+}
+
+function openRegHorasProf(profId){
+  openRegistroHoras();
+  setTimeout(function(){document.getElementById('horas-prof-sel').value=profId;},200);
+}
+
+async function saveHoras(){
+  var pid=document.getElementById('horas-prof-sel').value;
+  var fecha=document.getElementById('horas-fecha').value;
+  var horas=parseFloat(document.getElementById('horas-cantidad').value);
+  if(!pid){showToast('Selecciona un profesor','&#9888;');return;}
+  if(!fecha){showToast('Ingresa la fecha','&#9888;');return;}
+  if(!horas||horas<=0){showToast('Ingresa las horas','&#9888;');return;}
+  var mes=fecha.substring(0,7);
+  var pdoc=await db.collection('profesores').doc(pid).get();
+  var pnom=pdoc.exists?pdoc.data().nombre:'';
+  var data={
+    profesorId:pid,profesorNombre:pnom,
+    fecha:fecha,mes:mes,horas:horas,
+    notas:document.getElementById('horas-notas').value.trim(),
+    creadoEn:new Date().toISOString()
+  };
+  var eid=document.getElementById('horas-prof-sel').dataset.editId;
+  try{
+    if(eid) await db.collection('horas_profesores').doc(eid).update(data);
+    else await db.collection('horas_profesores').add(data);
+    showToast('Horas '+(eid?'actualizadas':'registradas')+' \u2713');
+    document.getElementById('prof-horas-ov').classList.remove('open');
+    renderProfesores();
+  }catch(e){showToast('Error: '+e.message,'&#9888;');}
+}
+
+function openDetProf(ev,pid,pnom){
+  if(ev) ev.stopPropagation();
+  document.getElementById('prof-detail-title').textContent=pnom;
+  var mesLbl=document.getElementById('prof-mes-sel').selectedOptions[0].text;
+  document.getElementById('prof-detail-sub').textContent='Detalle \u2014 '+mesLbl;
+  document.getElementById('prof-detail-content').innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);">Cargando...</div>';
+  document.getElementById('prof-detail-ov').classList.add('open');
+  Promise.all([
+    db.collection('profesores').doc(pid).get(),
+    db.collection('horas_profesores').where('profesorId','==',pid).where('mes','==',profMes).get()
+  ]).then(function(res){
+    var prof=res[0].exists?res[0].data():{};
+    var hrs=res[1].docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    hrs.sort(function(a,b){return a.fecha.localeCompare(b.fecha);});
+    var totH=hrs.reduce(function(a,h){return a+(parseFloat(h.horas)||0);},0);
+    var totP=totH*(parseFloat(prof.valorHora)||0);
+    var html='<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">'
+      +'<div class="fin-item"><div class="fin-label">Total horas</div><div class="fin-value" style="font-size:24px;">'+totH+'hs</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Valor/hora</div><div class="fin-value" style="font-size:20px;">'+fmtM(parseFloat(prof.valorHora)||0)+'</div></div>'
+      +'<div class="fin-item"><div class="fin-label">Total a pagar</div><div class="fin-value" style="color:var(--sage-d);">'+fmtM(totP)+'</div></div>'
+      +'</div>';
+    if(!hrs.length){
+      html+='<div style="text-align:center;padding:24px;color:var(--muted);">Sin horas registradas este mes.</div>';
+    } else {
+      html+='<div style="border:1px solid var(--border);border-radius:12px;overflow:hidden;">'
+        +'<div style="display:grid;grid-template-columns:130px 70px 1fr auto;padding:8px 16px;background:rgba(74,103,65,.06);border-bottom:1px solid var(--border);font-size:10px;font-weight:600;letter-spacing:1px;color:var(--muted);text-transform:uppercase;">'
+        +'<div>Fecha</div><div>Horas</div><div>Notas</div><div></div></div>';
+      html+=hrs.map(function(h){
+        var d=new Date(h.fecha+'T12:00:00');
+        var fd=d.toLocaleDateString('es-AR',{weekday:'short',day:'numeric',month:'short'});
+        var safeNom=pnom.replace(/'/g,"&#39;");
+        return '<div style="display:grid;grid-template-columns:130px 70px 1fr auto;padding:12px 16px;border-bottom:1px solid var(--border);align-items:center;font-size:13px;">'
+          +'<div style="font-weight:500;">'+fd+'</div>'
+          +'<div><span style="background:rgba(74,103,65,.1);color:var(--sage-d);padding:3px 10px;border-radius:6px;font-weight:600;">'+h.horas+'hs</span></div>'
+          +'<div style="color:var(--muted);">'+(h.notas||'\u2014')+'</div>'
+          +'<div style="display:flex;gap:6px;">'
+          +'<button onclick="editHorasReg(\''+h.id+'\');event.stopPropagation()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;">&#9998;</button>'
+          +'<button onclick="delHoras(\''+h.id+'\',\''+pid+'\',\''+safeNom+'\');event.stopPropagation()" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 8px;font-size:11px;cursor:pointer;color:var(--err);">&#x2715;</button>'
+          +'</div></div>';
+      }).join('');
+      html+='</div>';
+    }
+    html+='<div style="margin-top:16px;display:flex;justify-content:flex-end;">'
+      +'<button class="btn btn-p btn-sm" onclick="document.getElementById(\'prof-detail-ov\').classList.remove(\'open\');openRegHorasProf(\''+pid+'\')">+ Agregar horas</button>'
+      +'</div>';
+    document.getElementById('prof-detail-content').innerHTML=html;
+  }).catch(function(e){
+    document.getElementById('prof-detail-content').innerHTML='<div style="color:var(--err);padding:20px;">Error: '+e.message+'</div>';
+  });
+}
+
+async function editHorasReg(hid){
+  var doc=await db.collection('horas_profesores').doc(hid).get();
+  if(!doc.exists)return;
+  var d=doc.data();
+  openRegistroHoras();
+  setTimeout(function(){
+    document.getElementById('horas-prof-sel').value=d.profesorId||'';
+    document.getElementById('horas-fecha').value=d.fecha||'';
+    document.getElementById('horas-cantidad').value=d.horas||'';
+    document.getElementById('horas-notas').value=d.notas||'';
+    document.getElementById('horas-prof-sel').dataset.editId=hid;
+    document.getElementById('prof-horas-ov').querySelector('.mt').textContent='Editar Horas';
+  },200);
+}
+
+async function delHoras(hid,pid,pnom){
+  if(!confirm('Eliminar este registro?'))return;
+  try{
+    await db.collection('horas_profesores').doc(hid).delete();
+    showToast('Registro eliminado \u2713');
+    openDetProf(null,pid,pnom);
+    renderProfesores();
+  }catch(e){showToast('Error: '+e.message,'&#9888;');}
+}
+
 window.addEventListener('resize',applyMobileLayout);
 
 
@@ -3385,6 +3680,9 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
+
+
 
 
 
