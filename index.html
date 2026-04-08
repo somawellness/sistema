@@ -3431,6 +3431,9 @@ function initProfMes(){
 }
 
 async function renderProfesores(){
+  console.log('renderProfesores START, db=',!!db,'profMes=',profMes);
+  var cElDbg=document.getElementById('prof-content');
+  if(cElDbg) cElDbg.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted);">Conectando...</div>';
   var sel=document.getElementById('prof-mes-sel');
   if(sel && !sel.options.length) initProfMes();
   if(sel)profMes=sel.value;
@@ -3682,6 +3685,7 @@ function registro_renderPago(){
   if(alias_el) alias_el.textContent = pagos.alias || '—';
   if(cbu_el)   cbu_el.textContent   = pagos.cbu   || '(completar CBU)';
 }
+
 
 
 
