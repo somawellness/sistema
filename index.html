@@ -3880,27 +3880,31 @@ var DIAS_FULL = {
 // Normalize horarios: expand abbreviated day names, keep activity prefix if mixed activities
 function normalizeHorarios(horStr) {
   if(!horStr) return '';
+  var ACTS = ['Pilates Reformer','Yoga','Streaching','Actividad Física Adaptada','Movimiento Activo'];
   return horStr.split(' / ').map(function(part){
     part = part.trim();
-    // Check if has "Activity: Day HHhs" format
+    // Check for "Activity: Day HHhs" or "Sede Activity: Day HHhs" format
     var colonIdx = part.indexOf(': ');
     var prefix = '', slot = part;
     if(colonIdx > 0) {
-      prefix = part.substring(0, colonIdx);
-      // Remove sede from prefix if present
-      ['Amarras','Centro','Faro'].forEach(function(s){ prefix = prefix.replace(s+' ','').trim(); });
-      slot = part.substring(colonIdx + 2).trim();
+      var rawPrefix = part.substring(0, colonIdx);
+      // Remove sede prefix if present
+      var cleanPrefix = rawPrefix;
+      ['Amarras','Centro','Faro'].forEach(function(s){ cleanPrefix = cleanPrefix.replace(s+' ','').trim(); });
+      // Only treat as activity prefix if it's a known activity
+      if(ACTS.indexOf(cleanPrefix) >= 0) {
+        prefix = cleanPrefix;
+        slot   = part.substring(colonIdx + 2).trim();
+      }
+      // If not a known activity prefix, treat entire part as slot (no stripping)
     }
-    // Expand abbreviated day in slot
+    // Expand abbreviated day name in slot part only
     var spIdx = slot.indexOf(' ');
     if(spIdx > 0) {
       var abbr = slot.substring(0, spIdx);
       if(DIAS_FULL[abbr]) slot = DIAS_FULL[abbr] + slot.substring(spIdx);
     }
-    // Rebuild: only include prefix if it's a real activity name (not sede)
-    var ACTS = ['Pilates Reformer','Yoga','Streaching','Actividad Física Adaptada','Movimiento Activo'];
-    var isAct = ACTS.indexOf(prefix) >= 0;
-    return (isAct ? prefix + ': ' : '') + slot;
+    return (prefix ? prefix + ': ' : '') + slot;
   }).join(' / ');
 }
 
@@ -3943,8 +3947,11 @@ async function batchNormalizeStudents() {
     var updates = {};
     var newHor = normalizeHorarios(s.horarios || '');
     var newAct = inferActividad(s);
-    // Only update if something changed
-    if(newHor && newHor !== (s.horarios||'')) updates.horarios = newHor;
+    // Only update horarios if it changed AND didn't lose activity prefixes
+    var oldPrefixCount = (s.horarios||'').split(' / ').filter(function(p){ return p.indexOf(': ')>=0; }).length;
+    var newPrefixCount = newHor.split(' / ').filter(function(p){ return p.indexOf(': ')>=0; }).length;
+    var safeToUpdate = newPrefixCount >= oldPrefixCount; // never strip prefixes
+    if(safeToUpdate && newHor && newHor !== (s.horarios||'')) updates.horarios = newHor;
     if(newAct && !s.actividad) updates.actividad = newAct;
     if(Object.keys(updates).length > 0) {
       batch.update(db.collection('students').doc(s.id), updates);
@@ -4323,6 +4330,7 @@ async function delHoras(hid, pid, pnom){
     }
   });
 })();
+
 
 
 
