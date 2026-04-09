@@ -2246,7 +2246,7 @@ function openSlotDetail(sede,dia,hora,actividad){
   var asgn2 = getProfesorSlot(sede,dia,hora,act2,semana2);
   var isAdmin2 = cu && cu.role==='admin';
   var asgnBtn = isAdmin2
-    ? '<button onclick="openAsignarProfesor(\'' +sede+'\',\''+dia+'\',\''+hora+'\',\''+act2+'\');" style="background:'+(asgn2?'rgba(74,103,65,.1);color:var(--sage-d)':'var(--sage-d);color:#fff')+';border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">'+(asgn2?'Cambiar':'+ Asignar')+'</button>'
+    ? '<button onclick="openAsignarProfesor(&apos;'+sede+'&apos;,&apos;'+dia+'&apos;,&apos;'+hora+'&apos;,&apos;'+act2+'&apos;)" style="background:'+(asgn2?'rgba(74,103,65,.1);color:var(--sage-d)':'var(--sage-d);color:#fff')+';border:none;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer;">'+(asgn2?'Cambiar':'+ Asignar')+'</button>'
     : '';
   var profBadge = '<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:4px;">'
     +'<div>'
@@ -4076,6 +4076,7 @@ async function delHoras(hid, pid, pnom){
     }
   });
 })();
+
 
 
 
